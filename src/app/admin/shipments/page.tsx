@@ -29,7 +29,8 @@ export default function ShipmentsPage() {
         getCollection<Location>(LOCATIONS_COLLECTION),
       ]);
 
-      setShipments(denormalizedShipments);
+      // Denormalize shipment data for display
+      const denormalizedShipments = shipmentsData.map(shipment => {
         const truck = trucksData.find(t => t.id === shipment.truckId);
         const driver = driversData.find(d => d.id === shipment.driverId);
         const material = materialsData.find(m => m.id === shipment.materialId);
