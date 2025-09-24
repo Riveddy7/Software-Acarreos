@@ -2,7 +2,6 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Shipment, Truck, Driver, Material, Location } from '@/models/types';

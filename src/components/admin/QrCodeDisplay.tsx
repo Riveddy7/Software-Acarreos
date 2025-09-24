@@ -6,6 +6,7 @@ import QRCodeStyling from 'qr-code-styling'; // Import the new library
 
 interface QrCodeDisplayProps {
   value: string;
+  size?: number;
 }
 
 // Configuration for the QR code (can be customized)
@@ -32,7 +33,7 @@ const qrCodeOptions = {
   }
 };
 
-export default function QrCodeDisplay({ value }: QrCodeDisplayProps) {
+export default function QrCodeDisplay({ value, size = 80 }: QrCodeDisplayProps) {
   const ref = useRef<HTMLDivElement>(null);
   const qrCode = useRef<QRCodeStyling | null>(null);
 
@@ -43,11 +44,17 @@ export default function QrCodeDisplay({ value }: QrCodeDisplayProps) {
     if (!qrCode.current) {
       qrCode.current = new QRCodeStyling({
         ...qrCodeOptions,
+        width: size, // Use the size prop
+        height: size, // Use the size prop
         data: value, // Set initial data
       });
     } else {
       // Update data if QR code already exists
-      qrCode.current.update({ data: value });
+      qrCode.current.update({
+        width: size,
+        height: size,
+        data: value
+      });
     }
 
     const currentRef = ref.current; // Capture ref.current
