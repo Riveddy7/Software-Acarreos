@@ -134,6 +134,20 @@ export default function DispatchPage() {
       // Update folio with docId after creation
       await updateDocument(SHIPMENTS_COLLECTION, shipmentId, { folio: shipmentId });
 
+      // Update truck status
+      await updateDocument(TRUCKS_COLLECTION, scannedTruckId, {
+        status: 'IN_SHIPMENT',
+        currentShipmentId: shipmentId,
+        currentDriverId: scannedDriverId,
+      });
+
+      // Update driver status
+      await updateDocument(DRIVERS_COLLECTION, scannedDriverId, {
+        status: 'IN_SHIPMENT',
+        currentShipmentId: shipmentId,
+        currentTruckId: scannedTruckId,
+      });
+
       // Create a dispatch ticket
       const newTicketData = {
         shipmentId: shipmentId,

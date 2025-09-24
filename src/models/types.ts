@@ -7,14 +7,26 @@ interface BaseDoc {
   createdAt: Timestamp;
 }
 
+export type TruckStatus = "AVAILABLE" | "IN_SHIPMENT";
+
 export interface Truck extends BaseDoc {
   plate: string;
   model: string;
+  status: TruckStatus;
+  currentShipmentId?: string; // Optional, only if IN_SHIPMENT
+  currentDriverId?: string;   // Optional, only if IN_SHIPMENT
+  currentDriverName?: string; // Optional, denormalized driver name
 }
+
+export type DriverStatus = "AVAILABLE" | "IN_SHIPMENT";
 
 export interface Driver extends BaseDoc {
   name: string;
   licenseNumber: string;
+  status: DriverStatus;
+  currentShipmentId?: string; // Optional, only if IN_SHIPMENT
+  currentTruckId?: string;    // Optional, only if IN_SHIPMENT
+  currentTruckPlate?: string; // Optional, denormalized truck plate
 }
 
 export interface Material extends BaseDoc {

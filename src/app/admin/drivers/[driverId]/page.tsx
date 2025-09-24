@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Driver } from '@/models/types';
+import { Driver, Truck } from '@/models/types';
+import { DRIVERS_COLLECTION, TRUCKS_COLLECTION } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
-
-const DRIVERS_COLLECTION = 'drivers';
 
 export default function DriverDetailPage() {
   const router = useRouter();
@@ -32,7 +32,18 @@ export default function DriverDetailPage() {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        setDriver({ id: docSnap.id, ...docSnap.data() } as Driver);
+        const fetchedDriver = { id: docSnap.id, ...docSnap.data() } as Driver;
+        
+        let truckPlate: string | undefined;
+        if (fetchedDriver.status === 'IN_SHIPMENT' && fetchedDriver.currentTruckId) {
+          const truckDocRef = doc(db, TRUCKS_COLLECTION, fetchedDriver.currentTruckId);
+          const truckDocSnap = await getDoc(truckDocRef);
+          if (truckDocSnap.exists()) {
+            truckPlate = (truckDocSnap.data() as Truck).plate;
+          }
+        }
+
+        setDriver({ ...fetchedDriver, currentTruckPlate: truckPlate });
         setError(null);
       } else {
         setError('Chofer no encontrado.');
@@ -69,6 +80,13 @@ export default function DriverDetailPage() {
         <p><strong>ID:</strong> <span className="font-mono text-sm text-gray-600">{driver.id}</span></p>
         <p><strong>Nombre:</strong> {driver.name}</p>
         <p><strong>Número de Licencia:</strong> {driver.licenseNumber}</p>
+        <p><strong>Estado:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${driver.status === 'IN_SHIPMENT' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{driver.status === 'IN_SHIPMENT' ? 'En Acarreo' : 'Disponible'}</span></p>
+        {driver.status === 'IN_SHIPMENT' && driver.currentShipmentId && (
+          <p><strong>Acarreo Actual:</strong> <Link href={`/admin/shipments/${driver.currentShipmentId}`} className="text-blue-600 hover:underline">{driver.currentShipmentId}</Link></p>
+        )}
+        {driver.status === 'IN_SHIPMENT' && driver.currentTruckPlate && (
+          <p><strong>Camión Actual:</strong> {driver.currentTruckPlate}</p>
+        )}
       </div>
 
       <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-md border border-gray-200">
@@ -76,10 +94,16 @@ export default function DriverDetailPage() {
         <QrCodeDisplay value={driver.id} size={256} /> {/* Larger QR code */}
       </div>
 
-      <div className="flex justify-center mt-8">
+      <div className="flex justify-center mt-8 space-x-4">
+        <Link
+          href={`/admin/drivers/${driver.id}/print`}
+          className="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-green-500"
+        >
+          Imprimir Tarjeta QR
+        </Link>
         <button
           onClick={() => router.push('/admin/drivers')}
-          className="w-full bg-blue-600 text-white text-lg font-bold py-3 px-6 rounded-md shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           Volver a Choferes
         </button>

@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Driver } from '@/models/types';
+import { Driver, DriverStatus } from '@/models/types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 import Modal from '@/components/ui/Modal';
@@ -98,6 +98,7 @@ export default function DriversPage() {
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">ID del Activo</th> {/* Adjusted text styles */}
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Licencia</th>
+                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Código QR</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
               </tr>
@@ -112,6 +113,11 @@ export default function DriversPage() {
                   </td> {/* Adjusted text color and made it a link */}
                   <td className="py-4 px-4 font-medium text-gray-900">{driver.name}</td> {/* Adjusted text color and weight */}
                   <td className="py-4 px-4 text-gray-700">{driver.licenseNumber}</td> {/* Adjusted text color */}
+                  <td className="py-4 px-4">
+                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${driver.status === 'IN_SHIPMENT' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                      {driver.status === 'IN_SHIPMENT' ? 'En Acarreo' : 'Disponible'}
+                    </span>
+                  </td>
                   <td className="py-4 px-4">
                     <QrCodeDisplay value={driver.id} />
                   </td>

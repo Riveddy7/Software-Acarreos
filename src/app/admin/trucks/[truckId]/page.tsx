@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Truck } from '@/models/types';
+import { Truck, Driver } from '@/models/types';
+import { TRUCKS_COLLECTION, DRIVERS_COLLECTION } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
-
-const TRUCKS_COLLECTION = 'trucks';
 
 export default function TruckDetailPage() {
   const router = useRouter();
@@ -32,7 +32,18 @@ export default function TruckDetailPage() {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        setTruck({ id: docSnap.id, ...docSnap.data() } as Truck);
+        const fetchedTruck = { id: docSnap.id, ...docSnap.data() } as Truck;
+        
+        let driverName: string | undefined;
+        if (fetchedTruck.status === 'IN_SHIPMENT' && fetchedTruck.currentDriverId) {
+          const driverDocRef = doc(db, DRIVERS_COLLECTION, fetchedTruck.currentDriverId);
+          const driverDocSnap = await getDoc(driverDocRef);
+          if (driverDocSnap.exists()) {
+            driverName = (driverDocSnap.data() as Driver).name;
+          }
+        }
+
+        setTruck({ ...fetchedTruck, currentDriverName: driverName });
         setError(null);
       } else {
         setError('Camión no encontrado.');
@@ -69,6 +80,13 @@ export default function TruckDetailPage() {
         <p><strong>ID:</strong> <span className="font-mono text-sm text-gray-600">{truck.id}</span></p>
         <p><strong>Placa:</strong> {truck.plate}</p>
         <p><strong>Modelo:</strong> {truck.model}</p>
+        <p><strong>Estado:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${truck.status === 'IN_SHIPMENT' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{truck.status === 'IN_SHIPMENT' ? 'En Acarreo' : 'Disponible'}</span></p>
+        {truck.status === 'IN_SHIPMENT' && truck.currentShipmentId && (
+          <p><strong>Acarreo Actual:</strong> <Link href={`/admin/shipments/${truck.currentShipmentId}`} className="text-blue-600 hover:underline">{truck.currentShipmentId}</Link></p>
+        )}
+        {truck.status === 'IN_SHIPMENT' && truck.currentDriverName && (
+          <p><strong>Chofer Actual:</strong> {truck.currentDriverName}</p>
+        )}
       </div>
 
       <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-md border border-gray-200">
@@ -76,10 +94,16 @@ export default function TruckDetailPage() {
         <QrCodeDisplay value={truck.id} size={256} /> {/* Larger QR code */}
       </div>
 
-      <div className="flex justify-center mt-8">
+      <div className="flex justify-center mt-8 space-x-4">
+        <Link
+          href={`/admin/trucks/${truck.id}/print`}
+          className="px-4 py-2 rounded-md text-white bg-green-600 hover:bg-green-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-green-500"
+        >
+          Imprimir Tarjeta QR
+        </Link>
         <button
           onClick={() => router.push('/admin/trucks')}
-          className="w-full bg-blue-600 text-white text-lg font-bold py-3 px-6 rounded-md shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           Volver a Camiones
         </button>

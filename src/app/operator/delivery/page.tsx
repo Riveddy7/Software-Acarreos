@@ -115,6 +115,20 @@ export default function DeliveryPage() {
         deliveryLocationId: deliveryLocationId,
       });
 
+      // Update truck status
+      await updateDocument(TRUCKS_COLLECTION, foundShipment.truckId, {
+        status: 'AVAILABLE',
+        currentShipmentId: null,
+        currentDriverId: null,
+      });
+
+      // Update driver status
+      await updateDocument(DRIVERS_COLLECTION, foundShipment.driverId, {
+        status: 'AVAILABLE',
+        currentShipmentId: null,
+        currentTruckId: null,
+      });
+
       // Create a delivery ticket
       const newTicketData = {
         shipmentId: foundShipment.id,
