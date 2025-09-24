@@ -67,7 +67,7 @@ export default function DispatchPage() {
 
     switch (step) {
       case 1: // Scan Truck
-        foundItem = trucks.find(t => t.id === id);
+        foundItem = trucks.find(t => t.id === id) ?? null;
         if (foundItem) {
           setScannedTruckId(id);
           isValid = true;
@@ -76,7 +76,7 @@ export default function DispatchPage() {
         }
         break;
       case 2: // Scan Driver
-        foundItem = drivers.find(d => d.id === id);
+        foundItem = drivers.find(d => d.id === id) ?? null;
         if (foundItem) {
           setScannedDriverId(id);
           isValid = true;
@@ -85,7 +85,7 @@ export default function DispatchPage() {
         }
         break;
       case 3: // Scan Material
-        foundItem = materials.find(m => m.id === id);
+        foundItem = materials.find(m => m.id === id) ?? null;
         if (foundItem) {
           setScannedMaterialId(id);
           isValid = true;
