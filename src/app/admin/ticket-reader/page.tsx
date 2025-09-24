@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Shipment, Truck, Driver, Material, Location } from '@/models/types';
 import { getCollection } from '@/lib/firebase/firestore';
