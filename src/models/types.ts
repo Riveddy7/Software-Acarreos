@@ -50,3 +50,11 @@ export interface Shipment {
   dispatchLocationName?: string;
   deliveryLocationName?: string;
 }
+
+export type TicketType = "dispatch" | "delivery";
+
+export interface Ticket extends BaseDoc {
+  shipmentId: string;
+  type: TicketType;
+  // Add any other relevant ticket-specific fields here
+}

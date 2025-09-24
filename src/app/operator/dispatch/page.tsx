@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp } from 'firebase/firestore';
-import { Truck, Driver, Material, Location, ShipmentStatus } from '@/models/types';
-import { getCollection, addDocument, updateDocument } from '@/lib/firebase/firestore';
+import { getCollection, addDocument, updateDocument, TICKETS_COLLECTION } from '@/lib/firebase/firestore';
+import { Truck, Driver, Material, Location, ShipmentStatus, TicketType } from '@/models/types';
 // Removed QrScanner import
 
 const TRUCKS_COLLECTION = 'trucks';
@@ -130,12 +130,20 @@ export default function DispatchPage() {
         createdAt: Timestamp.now(),
       };
 
-      const docId = await addDocument(SHIPMENTS_COLLECTION, newShipment);
+      const shipmentId = await addDocument(SHIPMENTS_COLLECTION, newShipment);
       // Update folio with docId after creation
-      await updateDocument(SHIPMENTS_COLLECTION, docId, { folio: docId });
+      await updateDocument(SHIPMENTS_COLLECTION, shipmentId, { folio: shipmentId });
+
+      // Create a dispatch ticket
+      const newTicketData = {
+        shipmentId: shipmentId,
+        type: 'dispatch' as TicketType,
+        createdAt: Timestamp.now(),
+      };
+      const ticketId = await addDocument(TICKETS_COLLECTION, newTicketData);
 
       alert('Despacho registrado con éxito!');
-      router.push(`/operator/ticket/${docId}?type=dispatch`); // Navigate to dispatch ticket page
+      router.push(`/admin/tickets/${ticketId}`); // Navigate to the new ticket detail page
     } catch (e) {
       console.error("Error confirming dispatch:", e);
       alert('Error al registrar el despacho.');

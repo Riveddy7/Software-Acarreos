@@ -2,37 +2,31 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { Timestamp } from 'firebase/firestore';
-import { Shipment, Truck, Driver, Material, Location } from '@/models/types';
-import { getCollection, TICKETS_COLLECTION, SHIPMENTS_COLLECTION, TRUCKS_COLLECTION, DRIVERS_COLLECTION, MATERIALS_COLLECTION, LOCATIONS_COLLECTION, addDocument } from '@/lib/firebase/firestore';
-import { doc, getDoc } from 'firebase/firestore';
+import { useParams, useRouter } from 'next/navigation';
+import { Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { Ticket, Shipment, Truck, Driver, Material, Location } from '@/models/types';
+import { getCollection, TICKETS_COLLECTION, SHIPMENTS_COLLECTION, TRUCKS_COLLECTION, DRIVERS_COLLECTION, MATERIALS_COLLECTION, LOCATIONS_COLLECTION } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 
-const SHIPMENTS_COLLECTION = 'shipments';
-const TRUCKS_COLLECTION = 'trucks';
-const DRIVERS_COLLECTION = 'drivers';
-const MATERIALS_COLLECTION = 'materials';
-const LOCATIONS_COLLECTION = 'locations';
-
-export default function AdminShipmentTicketPage() {
+export default function AdminTicketDetailPage() {
   const router = useRouter();
   const params = useParams();
-
-  const ticketType = params.type as string; // 'dispatch' or 'delivery'
-  const shipmentId = params.shipmentId as string;
+  const ticketId = params.ticketId as string;
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [shipment, setShipment] = useState<Shipment | null>(null);
+  const [trucks, setTrucks] = useState<Truck[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!shipmentId || !ticketType) {
-      setError('ID de acarreo o tipo de ticket no proporcionado.');
+    if (!ticketId) {
+      setError('ID de ticket no proporcionado.');
       setIsLoading(false);
       return;
     }
@@ -46,65 +40,54 @@ export default function AdminShipmentTicketPage() {
         getCollection<Material>(MATERIALS_COLLECTION),
         getCollection<Location>(LOCATIONS_COLLECTION),
       ]);
+      setTrucks(trucksData);
+      setDrivers(driversData);
       setMaterials(materialsData);
+      setLocations(locationsData);
 
-      // Find or create ticket
-      const q = query(
-        collection(db, TICKETS_COLLECTION),
-        where('shipmentId', '==', shipmentId),
-        where('type', '==', ticketType)
-      );
-      const querySnapshot = await getDocs(q);
+      // Fetch specific ticket
+      const ticketDocRef = doc(db, TICKETS_COLLECTION, ticketId);
+      const ticketDocSnap = await getDoc(ticketDocRef);
 
-      let currentTicket: Ticket;
-      if (!querySnapshot.empty) {
-        // Ticket found
-        currentTicket = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as Ticket;
-        setTicket(currentTicket);
+      if (ticketDocSnap.exists()) {
+        const fetchedTicket = { id: ticketDocSnap.id, ...ticketDocSnap.data() } as Ticket;
+        setTicket(fetchedTicket);
+
+        // Fetch corresponding shipment
+        const shipmentDocRef = doc(db, SHIPMENTS_COLLECTION, fetchedTicket.shipmentId);
+        const shipmentDocSnap = await getDoc(shipmentDocRef);
+
+        if (shipmentDocSnap.exists()) {
+          const fetchedShipment = { id: shipmentDocSnap.id, ...shipmentDocSnap.data() } as Shipment;
+          // Denormalize for display
+          const truck = trucksData.find(t => t.id === fetchedShipment.truckId);
+          const driver = driversData.find(d => d.id === fetchedShipment.driverId);
+          const material = materialsData.find(m => m.id === fetchedShipment.materialId);
+          const dispatchLocation = locationsData.find(l => l.id === fetchedShipment.dispatchLocationId);
+          const deliveryLocation = locationsData.find(l => l.id === fetchedShipment.deliveryLocationId);
+
+          setShipment({
+            ...fetchedShipment,
+            truckPlate: truck?.plate || 'Desconocido',
+            driverName: driver?.name || 'Desconocido',
+            materialName: material?.name || 'Desconocido',
+            dispatchLocationName: dispatchLocation?.name || 'Desconocido',
+            deliveryLocationName: deliveryLocation?.name || 'N/A',
+          });
+        } else {
+          setError('Acarreo asociado no encontrado.');
+        }
+        setError(null);
       } else {
-        // No ticket found, create a new one
-        const newTicketData = {
-          shipmentId: shipmentId,
-          type: ticketType,
-          createdAt: Timestamp.now(),
-        };
-        const newTicketId = await addDocument<Omit<Ticket, 'id'>>(TICKETS_COLLECTION, newTicketData);
-        currentTicket = { id: newTicketId, ...newTicketData } as Ticket;
-        setTicket(currentTicket);
+        setError('Ticket no encontrado.');
       }
-
-      // Fetch corresponding shipment
-      const shipmentDocRef = doc(db, SHIPMENTS_COLLECTION, shipmentId);
-      const shipmentDocSnap = await getDoc(shipmentDocRef);
-
-      if (shipmentDocSnap.exists()) {
-        const fetchedShipment = { id: shipmentDocSnap.id, ...shipmentDocSnap.data() } as Shipment;
-        // Denormalize for display
-        const truck = trucksData.find(t => t.id === fetchedShipment.truckId);
-        const driver = driversData.find(d => d.id === fetchedShipment.driverId);
-        const material = materialsData.find(m => m.id === fetchedShipment.materialId);
-        const dispatchLocation = locationsData.find(l => l.id === fetchedShipment.dispatchLocationId);
-        const deliveryLocation = locationsData.find(l => l.id === fetchedShipment.deliveryLocationId);
-
-        setShipment({
-          ...fetchedShipment,
-          truckPlate: truck?.plate || 'Desconocido',
-          driverName: driver?.name || 'Desconocido',
-          materialName: material?.name || 'Desconocido',
-          dispatchLocationName: dispatchLocation?.name || 'Desconocido',
-          deliveryLocationName: deliveryLocation?.name || 'N/A',
-        });
-      } else {
-        setError('Acarreo asociado no encontrado.');
-      }
-      setError(null);
     } catch (e) {
       console.error("Error fetching ticket data:", e);
       setError('Error al cargar los datos del ticket. Verifique su configuración de Firebase.');
     } finally {
       setIsLoading(false);
     }
-  }, [shipmentId, ticketType]);
+  }, [ticketId]);
 
   useEffect(() => {
     fetchData();
@@ -172,10 +155,10 @@ export default function AdminShipmentTicketPage() {
 
       <div className="flex justify-center mt-8">
         <button
-          onClick={() => router.push('/admin/shipments')}
+          onClick={() => router.push('/admin/tickets')}
           className="w-full bg-blue-600 text-white text-lg font-bold py-3 px-6 rounded-md shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          Volver a Acarreos
+          Volver a Tickets
         </button>
       </div>
     </div>

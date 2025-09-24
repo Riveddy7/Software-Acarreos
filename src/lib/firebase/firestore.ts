@@ -12,6 +12,8 @@ import {
   orderBy 
 } from 'firebase/firestore';
 
+export const TICKETS_COLLECTION = 'tickets';
+
 /**
  * Fetches all documents from a specified collection and orders them by creation date.
  * @param collectionName The name of the Firestore collection.

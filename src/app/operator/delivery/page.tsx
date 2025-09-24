@@ -5,8 +5,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Timestamp, query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Shipment, Truck, Driver, Material, Location, ShipmentStatus } from '@/models/types';
-import { getCollection, updateDocument } from '@/lib/firebase/firestore';
+import { Shipment, Truck, Driver, Material, Location, ShipmentStatus, TicketType } from '@/models/types';
+import { getCollection, updateDocument, addDocument, TICKETS_COLLECTION } from '@/lib/firebase/firestore';
 // Removed QrScanner import
 
 const TRUCKS_COLLECTION = 'trucks';
@@ -114,8 +114,17 @@ export default function DeliveryPage() {
         deliveryTimestamp: Timestamp.now(),
         deliveryLocationId: deliveryLocationId,
       });
+
+      // Create a delivery ticket
+      const newTicketData = {
+        shipmentId: foundShipment.id,
+        type: 'delivery' as TicketType,
+        createdAt: Timestamp.now(),
+      };
+      const ticketId = await addDocument(TICKETS_COLLECTION, newTicketData);
+
       alert('Descarga registrada con éxito!');
-      router.push(`/operator/ticket/${foundShipment.id}?type=delivery`); // Navigate to delivery ticket page
+      router.push(`/admin/tickets/${ticketId}`); // Navigate to delivery ticket page
     } catch (e) {
       console.error("Error confirming delivery:", e);
       alert('Error al registrar la descarga.');
