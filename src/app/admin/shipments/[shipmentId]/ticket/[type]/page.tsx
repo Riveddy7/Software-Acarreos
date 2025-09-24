@@ -61,7 +61,7 @@ export default function AdminShipmentTicketPage() {
         // No ticket found, create a new one
         const newTicketData = {
           shipmentId: shipmentId,
-          type: ticketType,
+          type: ticketType as TicketType,
           createdAt: Timestamp.now(),
         };
         const newTicketId = await addDocument<Omit<Ticket, 'id'>>(TICKETS_COLLECTION, newTicketData);
