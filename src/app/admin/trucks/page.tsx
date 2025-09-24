@@ -3,7 +3,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Truck, TruckStatus } from '@/models/types';
+import { Truck } from '@/models/types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 import Modal from '@/components/ui/Modal';
