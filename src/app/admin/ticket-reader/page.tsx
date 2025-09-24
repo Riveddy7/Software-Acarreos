@@ -9,11 +9,7 @@ import { getCollection, TICKETS_COLLECTION, SHIPMENTS_COLLECTION, TRUCKS_COLLECT
 import AdminQrReader from '@/components/admin/AdminQrReader';
 import Link from 'next/link';
 
-const SHIPMENTS_COLLECTION = 'shipments';
-const TRUCKS_COLLECTION = 'trucks';
-const DRIVERS_COLLECTION = 'drivers';
-const MATERIALS_COLLECTION = 'materials';
-const LOCATIONS_COLLECTION = 'locations';
+
 
 export default function AdminTicketReaderPage() {
 
@@ -87,7 +83,7 @@ export default function AdminTicketReaderPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [trucks, drivers, materials, locations]); // Added master data to dependencies
+  }, []);
 
   const handleScan = (id: string) => {
     fetchData(id);
