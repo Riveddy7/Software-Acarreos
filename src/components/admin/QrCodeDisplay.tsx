@@ -70,7 +70,7 @@ export default function QrCodeDisplay({ value, size = 80 }: QrCodeDisplayProps) 
         // qrCode.current.clear(); // No direct clear method, but append replaces
       }
     };
-  }, [value]); // Re-run effect if value changes
+  }, [value, size]); // Re-run effect if value or size changes
 
   if (!value) return null;
 
