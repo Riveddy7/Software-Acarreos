@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Driver } from '@/models/types';
+import { Driver, DriverStatus } from '@/models/types';
 
 interface DriverFormProps {
   driver?: Driver | null;
@@ -30,7 +30,7 @@ export default function DriverForm({ driver, onSave, onCancel }: DriverFormProps
       alert('Por favor, complete todos los campos.');
       return;
     }
-    onSave({ name, licenseNumber });
+    onSave({ name, licenseNumber, status: driver?.status || 'AVAILABLE' });
   };
 
   return (
