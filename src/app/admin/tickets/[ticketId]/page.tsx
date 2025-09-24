@@ -16,10 +16,7 @@ export default function AdminTicketDetailPage() {
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +37,7 @@ export default function AdminTicketDetailPage() {
         getCollection<Material>(MATERIALS_COLLECTION),
         getCollection<Location>(LOCATIONS_COLLECTION),
       ]);
-      setTrucks(trucksData);
-      setDrivers(driversData);
       setMaterials(materialsData);
-      setLocations(locationsData);
 
       // Fetch specific ticket
       const ticketDocRef = doc(db, TICKETS_COLLECTION, ticketId);

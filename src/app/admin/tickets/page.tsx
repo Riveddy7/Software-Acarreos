@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Ticket, Shipment } from '@/models/types';
+import { Ticket } from '@/models/types';
 import { getCollection, TICKETS_COLLECTION } from '@/lib/firebase/firestore';
 import Link from 'next/link';
 import { Timestamp } from 'firebase/firestore';

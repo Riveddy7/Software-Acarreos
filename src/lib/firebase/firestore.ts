@@ -13,6 +13,11 @@ import {
 } from 'firebase/firestore';
 
 export const TICKETS_COLLECTION = 'tickets';
+export const SHIPMENTS_COLLECTION = 'shipments';
+export const TRUCKS_COLLECTION = 'trucks';
+export const DRIVERS_COLLECTION = 'drivers';
+export const MATERIALS_COLLECTION = 'materials';
+export const LOCATIONS_COLLECTION = 'locations';
 
 /**
  * Fetches all documents from a specified collection and orders them by creation date.
