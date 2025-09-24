@@ -31,7 +31,7 @@ const qrCodeOptions = {
     color: '#4267b2',
     type: 'dot'
   }
-};
+} as const;
 
 export default function QrCodeDisplay({ value, size = 80 }: QrCodeDisplayProps) {
   const ref = useRef<HTMLDivElement>(null);
