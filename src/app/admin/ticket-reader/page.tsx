@@ -54,11 +54,11 @@ export default function AdminTicketReaderPage() {
       if (docSnap.exists()) {
         const fetchedShipment = { id: docSnap.id, ...docSnap.data() } as Shipment;
         // Denormalize for display
-        const truck = trucks.find(t => t.id === fetchedShipment.truckId) || trucksData.find(t => t.id === fetchedShipment.truckId);
-        const driver = drivers.find(d => d.id === fetchedShipment.driverId) || driversData.find(d => d.id === fetchedShipment.driverId);
-        const material = materials.find(m => m.id === fetchedShipment.materialId) || materialsData.find(m => m.id === fetchedShipment.materialId);
-        const dispatchLocation = locations.find(l => l.id === fetchedShipment.dispatchLocationId) || locationsData.find(l => l.id === fetchedShipment.dispatchLocationId);
-        const deliveryLocation = locations.find(l => l.id === fetchedShipment.deliveryLocationId) || locationsData.find(l => l.id === fetchedShipment.deliveryLocationId);
+        const truck = trucks.find(t => t.id === fetchedShipment.truckId);
+        const driver = drivers.find(d => d.id === fetchedShipment.driverId);
+        const material = materials.find(m => m.id === fetchedShipment.materialId);
+        const dispatchLocation = locations.find(l => l.id === fetchedShipment.dispatchLocationId);
+        const deliveryLocation = locations.find(l => l.id === fetchedShipment.deliveryLocationId);
 
         setShipment({
           ...fetchedShipment,
