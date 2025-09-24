@@ -10,11 +10,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 
-const SHIPMENTS_COLLECTION = 'shipments';
-const TRUCKS_COLLECTION = 'trucks';
-const DRIVERS_COLLECTION = 'drivers';
-const MATERIALS_COLLECTION = 'materials';
-const LOCATIONS_COLLECTION = 'locations';
+
 
 export default function AdminShipmentTicketPage() {
   const router = useRouter();
