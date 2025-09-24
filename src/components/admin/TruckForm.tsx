@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Truck } from '@/models/types';
+import { Truck, TruckStatus } from '@/models/types';
 
 interface TruckFormProps {
   truck?: Truck | null; // Truck to edit, or null for new truck
@@ -30,7 +30,7 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
       alert('Por favor, complete todos los campos.');
       return;
     }
-    onSave({ plate, model });
+    onSave({ plate, model, status: truck?.status || 'AVAILABLE' });
   };
 
   return (
