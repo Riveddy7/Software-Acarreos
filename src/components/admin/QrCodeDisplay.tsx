@@ -1,0 +1,73 @@
+
+'use client';
+
+import React, { useEffect, useRef } from 'react';
+import QRCodeStyling from 'qr-code-styling'; // Import the new library
+
+interface QrCodeDisplayProps {
+  value: string;
+}
+
+// Configuration for the QR code (can be customized)
+const qrCodeOptions = {
+  width: 80,
+  height: 80,
+  type: 'canvas',
+  data: '', // This will be set dynamically
+  image: '', // Optional: path to an image in the center of the QR code
+  dotsOptions: {
+    color: '#4267b2',
+    type: 'rounded'
+  },
+  backgroundOptions: {
+    color: '#ffffff',
+  },
+  cornersSquareOptions: {
+    color: '#4267b2',
+    type: 'extra-rounded'
+  },
+  cornersDotOptions: {
+    color: '#4267b2',
+    type: 'dot'
+  }
+};
+
+export default function QrCodeDisplay({ value }: QrCodeDisplayProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const qrCode = useRef<QRCodeStyling | null>(null);
+
+  useEffect(() => {
+    if (!value) return;
+
+    // Initialize QRCodeStyling only once
+    if (!qrCode.current) {
+      qrCode.current = new QRCodeStyling({
+        ...qrCodeOptions,
+        data: value, // Set initial data
+      });
+    } else {
+      // Update data if QR code already exists
+      qrCode.current.update({ data: value });
+    }
+
+    // Append QR code to the ref element
+    if (ref.current) {
+      qrCode.current.append(ref.current);
+    }
+
+    // Cleanup function (optional, but good practice)
+    return () => {
+      if (qrCode.current && ref.current) {
+        // qrCode.current.clear(); // No direct clear method, but append replaces
+      }
+    };
+  }, [value]); // Re-run effect if value changes
+
+  if (!value) return null;
+
+  return (
+    <div className="p-2 bg-white inline-block rounded-lg shadow">
+      <div ref={ref} /> {/* The div where the QR code will be rendered */}
+    </div>
+  );
+}
