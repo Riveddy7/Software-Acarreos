@@ -16,7 +16,7 @@ export default function AdminShipmentTicketPage() {
   const router = useRouter();
   const params = useParams();
 
-  const ticketType = params.type as string; // 'dispatch' or 'delivery'
+  const ticketType = params.type as TicketType; // 'dispatch' or 'delivery'
   const shipmentId = params.shipmentId as string;
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
