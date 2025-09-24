@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 
-import { Ticket, Shipment, Truck, Driver, Material, Location } from '@/models/types';
+import { Ticket, TicketType, Shipment, Truck, Driver, Material, Location } from '@/models/types';
 import { getCollection, TICKETS_COLLECTION, SHIPMENTS_COLLECTION, TRUCKS_COLLECTION, DRIVERS_COLLECTION, MATERIALS_COLLECTION, LOCATIONS_COLLECTION, addDocument } from '@/lib/firebase/firestore';
 import { Timestamp, doc, getDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
