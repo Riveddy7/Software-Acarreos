@@ -50,14 +50,16 @@ export default function QrCodeDisplay({ value }: QrCodeDisplayProps) {
       qrCode.current.update({ data: value });
     }
 
+    const currentRef = ref.current; // Capture ref.current
+
     // Append QR code to the ref element
-    if (ref.current) {
-      qrCode.current.append(ref.current);
+    if (currentRef) {
+      qrCode.current.append(currentRef);
     }
 
     // Cleanup function (optional, but good practice)
     return () => {
-      if (qrCode.current && ref.current) {
+      if (qrCode.current && currentRef) {
         // qrCode.current.clear(); // No direct clear method, but append replaces
       }
     };

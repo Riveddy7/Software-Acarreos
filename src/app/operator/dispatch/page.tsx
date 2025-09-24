@@ -63,7 +63,7 @@ export default function DispatchPage() {
   const handleIdInput = (id: string) => { // Renamed from handleScan
     setScanError(null);
     let isValid = false;
-    let foundItem: any = null;
+    let foundItem: Truck | Driver | Material | null = null;
 
     switch (step) {
       case 1: // Scan Truck

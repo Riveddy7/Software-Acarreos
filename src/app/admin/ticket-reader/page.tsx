@@ -17,9 +17,8 @@ const MATERIALS_COLLECTION = 'materials';
 const LOCATIONS_COLLECTION = 'locations';
 
 export default function AdminTicketReaderPage() {
-  const router = useRouter();
 
-  const [scannedShipmentId, setScannedShipmentId] = useState<string | null>(null);
+
   const [shipment, setShipment] = useState<Shipment | null>(null);
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -82,7 +81,6 @@ export default function AdminTicketReaderPage() {
   }, [trucks, drivers, materials, locations]); // Added master data to dependencies
 
   const handleScan = (id: string) => {
-    setScannedShipmentId(id);
     fetchData(id);
   };
 

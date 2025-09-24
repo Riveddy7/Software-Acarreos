@@ -13,10 +13,6 @@ const LOCATIONS_COLLECTION = 'locations';
 
 export default function ShipmentsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,13 +29,7 @@ export default function ShipmentsPage() {
         getCollection<Location>(LOCATIONS_COLLECTION),
       ]);
 
-      setTrucks(trucksData);
-      setDrivers(driversData);
-      setMaterials(materialsData);
-      setLocations(locationsData);
-
-      // Denormalize shipment data for display
-      const denormalizedShipments = shipmentsData.map(shipment => {
+      setShipments(denormalizedShipments);
         const truck = trucksData.find(t => t.id === shipment.truckId);
         const driver = driversData.find(d => d.id === shipment.driverId);
         const material = materialsData.find(m => m.id === shipment.materialId);
@@ -70,7 +60,7 @@ export default function ShipmentsPage() {
     fetchData();
   }, [fetchData]);
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: { toDate: () => Date } | null | undefined) => {
     if (!timestamp) return 'N/A';
     // Firestore Timestamp object has to be converted to JS Date object
     const date = timestamp.toDate();

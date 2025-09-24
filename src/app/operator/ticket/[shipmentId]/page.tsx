@@ -25,10 +25,7 @@ export default function TicketPage() {
   const shipmentId = params.shipmentId as string;
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -49,10 +46,7 @@ export default function TicketPage() {
         getCollection<Material>(MATERIALS_COLLECTION),
         getCollection<Location>(LOCATIONS_COLLECTION),
       ]);
-      setTrucks(trucksData);
-      setDrivers(driversData);
       setMaterials(materialsData);
-      setLocations(locationsData);
 
       // Fetch specific shipment
       const docRef = doc(db, SHIPMENTS_COLLECTION, shipmentId);
