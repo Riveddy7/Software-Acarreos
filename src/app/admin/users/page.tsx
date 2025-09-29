@@ -51,8 +51,9 @@ export default function UsersPage() {
       await fetchUsers(); // Refresh the list
       setShowModal(false);
       setFormData({ email: '', username: '', password: '', role: 'operator' });
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al crear usuario';
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }

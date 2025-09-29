@@ -49,8 +49,9 @@ export default function LoginPage() {
           router.push('/operator');
         }
       }
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

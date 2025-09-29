@@ -9,7 +9,6 @@ import { TICKETS_COLLECTION, PURCHASE_ORDERS_COLLECTION, getCollection } from '@
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 import TicketPrintable from '@/components/admin/TicketPrintable';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 import QRCodeStyling from 'qr-code-styling';
 
 export default function AdminTicketDetailPage() {
@@ -23,7 +22,6 @@ export default function AdminTicketDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [showPrintableVersion, setShowPrintableVersion] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!ticketId) {
@@ -138,13 +136,19 @@ export default function AdminTicketDetailPage() {
 
       // Set up basic styling for receipt format
       const pageWidth = 50.8;
-      const pageHeight = 101.6;
       const margin = 3;
       const contentWidth = pageWidth - (margin * 2);
       let currentY = margin;
 
       // Helper function to add text with automatic line breaks (optimized for receipt)
-      const addText = (text: string, x: number, y: number, options: any = {}) => {
+      const addText = (text: string, x: number, y: number, options: {
+        fontSize?: number;
+        maxWidth?: number;
+        align?: string;
+        lineHeight?: number;
+        marginBottom?: number;
+        bold?: boolean;
+      } = {}) => {
         const fontSize = options.fontSize || 7; // Smaller default font for receipt
         const maxWidth = options.maxWidth || contentWidth;
         const align = options.align || 'left';
@@ -249,9 +253,9 @@ export default function AdminTicketDetailPage() {
         currentY = addText(`${ticket.supplierName}`, margin, currentY, { fontSize: 7, marginBottom: 2 });
 
         // Date
-        const formatDate = (timestamp: any) => {
-          if (!timestamp) return 'N/A';
-          const date = timestamp.toDate();
+        const formatDate = (timestamp: unknown) => {
+          if (!timestamp || typeof timestamp !== 'object' || !('toDate' in timestamp)) return 'N/A';
+          const date = (timestamp as { toDate: () => Date }).toDate();
           return date.toLocaleDateString('es-ES') + ' ' + date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         };
 
@@ -302,14 +306,14 @@ export default function AdminTicketDetailPage() {
         }
 
         // Date and time
-        const formatDate = (timestamp: any) => {
-          if (!timestamp) return 'N/A';
-          const date = timestamp.toDate();
+        const formatDispatchDate = (timestamp: unknown) => {
+          if (!timestamp || typeof timestamp !== 'object' || !('toDate' in timestamp)) return 'N/A';
+          const date = (timestamp as { toDate: () => Date }).toDate();
           return date.toLocaleDateString('es-ES') + ' ' + date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
         };
 
         if (ticket.dispatchTimestamp) {
-          currentY = addText(`Fecha: ${formatDate(ticket.dispatchTimestamp)}`, margin, currentY, { fontSize: 6, marginBottom: 1 });
+          currentY = addText(`Fecha: ${formatDispatchDate(ticket.dispatchTimestamp)}`, margin, currentY, { fontSize: 6, marginBottom: 1 });
         }
 
         // Dispatched by

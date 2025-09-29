@@ -73,8 +73,9 @@ export default function LocationSelectionPage() {
       } else if (userProfile.role === 'operator') {
         router.push('/operator');
       }
-    } catch (error: any) {
-      setError(error.message || 'Error al seleccionar ubicación');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Error al seleccionar ubicación';
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
