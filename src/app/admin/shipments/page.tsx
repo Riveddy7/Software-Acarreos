@@ -33,17 +33,35 @@ export default function ShipmentsPage() {
       const denormalizedShipments = shipmentsData.map(shipment => {
         const truck = trucksData.find(t => t.id === shipment.truckId);
         const driver = driversData.find(d => d.id === shipment.driverId);
-        const material = materialsData.find(m => m.id === shipment.materialId);
         const dispatchLocation = locationsData.find(l => l.id === shipment.dispatchLocationId);
         const deliveryLocation = locationsData.find(l => l.id === shipment.deliveryLocationId);
 
+        // Handle both multi-material and legacy single material shipments
+        let materialDisplay = 'Desconocido';
+        let totalWeight = shipment.weight || 0;
+
+        if (shipment.materials && shipment.materials.length > 0) {
+          // Multi-material shipment
+          if (shipment.materials.length === 1) {
+            materialDisplay = shipment.materials[0].materialName;
+          } else {
+            materialDisplay = `${shipment.materials.length} materiales`;
+          }
+          totalWeight = shipment.materials.reduce((sum, mat) => sum + mat.weight, 0);
+        } else if (shipment.materialId) {
+          // Legacy single material shipment
+          const material = materialsData.find(m => m.id === shipment.materialId);
+          materialDisplay = material?.name || 'Desconocido';
+        }
+
         return {
           ...shipment,
-          truckPlate: truck?.plate || 'Desconocido',
-          driverName: driver?.name || 'Desconocido',
-          materialName: material?.name || 'Desconocido',
-          dispatchLocationName: dispatchLocation?.name || 'Desconocido',
-          deliveryLocationName: deliveryLocation?.name || 'N/A',
+          truckPlate: truck?.plate || shipment.truckPlate || 'Desconocido',
+          driverName: driver?.name || shipment.driverName || 'Desconocido',
+          materialName: materialDisplay,
+          dispatchLocationName: dispatchLocation?.name || shipment.dispatchLocationName || 'Desconocido',
+          deliveryLocationName: deliveryLocation?.name || shipment.deliveryLocationName || 'N/A',
+          weight: totalWeight
         };
       });
 
@@ -104,7 +122,25 @@ export default function ShipmentsPage() {
                   </td>
                   <td className="py-4 px-4 text-gray-700">{shipment.truckPlate}</td>
                   <td className="py-4 px-4 text-gray-700">{shipment.driverName}</td>
-                  <td className="py-4 px-4 text-gray-700">{shipment.materialName}</td>
+                  <td className="py-4 px-4 text-gray-700">
+                    {shipment.materials && shipment.materials.length > 1 ? (
+                      <div>
+                        <div className="font-medium">{shipment.materialName}</div>
+                        <details className="mt-1">
+                          <summary className="text-xs text-blue-600 cursor-pointer">Ver detalles</summary>
+                          <div className="mt-2 space-y-1">
+                            {shipment.materials.map((material, index) => (
+                              <div key={index} className="text-xs text-gray-600">
+                                {material.materialName}: {material.weight} {material.materialUnit}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      </div>
+                    ) : (
+                      shipment.materialName
+                    )}
+                  </td>
                   <td className="py-4 px-4 text-gray-700">{shipment.dispatchLocationName}</td>
                   <td className="py-4 px-4 text-gray-700">{shipment.deliveryLocationName}</td>
                   <td className="py-4 px-4 text-gray-700">{shipment.weight}</td>

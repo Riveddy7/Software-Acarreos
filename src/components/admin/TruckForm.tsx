@@ -37,14 +37,18 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
     <form onSubmit={handleSubmit}>
       <div className="space-y-4">
         <div>
-          <label htmlFor="plate" className="block text-sm font-medium text-gray-700 mb-1">Placa</label>
+          <label htmlFor="plate" className="block text-sm font-medium text-gray-700 mb-1">ID Camión (4 dígitos)</label>
           <input
             type="text"
             id="plate"
             value={plate}
-            onChange={(e) => setPlate(e.target.value.toUpperCase())}
+            onChange={(e) => {
+              const value = e.target.value.replace(/\D/g, '').substring(0, 4);
+              setPlate(value);
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" // Adjusted border-radius and text color
-            placeholder="Ej: ABC-1234"
+            placeholder="Ej: 1234"
+            maxLength={4}
           />
         </div>
         <div>

@@ -48,14 +48,18 @@ export default function DriverForm({ driver, onSave, onCancel }: DriverFormProps
           />
         </div>
         <div>
-          <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 mb-1">Número de Licencia</label>
+          <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700 mb-1">ID Chofer (4 letras mayúsculas)</label>
           <input
             type="text"
             id="licenseNumber"
             value={licenseNumber}
-            onChange={(e) => setLicenseNumber(e.target.value)}
+            onChange={(e) => {
+              const value = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().substring(0, 4);
+              setLicenseNumber(value);
+            }}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" // Adjusted border-radius and text color
-            placeholder="Ej: A-1234567"
+            placeholder="Ej: ABCD"
+            maxLength={4}
           />
         </div>
       </div>

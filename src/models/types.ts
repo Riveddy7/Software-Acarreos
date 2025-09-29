@@ -41,15 +41,29 @@ export interface Location extends BaseDoc {
 
 export type ShipmentStatus = "EN_TRANSITO" | "COMPLETADO";
 
+// Shipment Item for multi-material support
+export interface ShipmentItem {
+  materialId: string;
+  materialName: string; // Denormalized
+  materialUnit: string; // Denormalized
+  weight: number;
+}
+
 export interface Shipment {
   id: string; // Firestore document ID, used as the main folio
   folio: string;
   truckId: string;
   driverId: string;
-  materialId: string;
+
+  // Multi-material support
+  materials: ShipmentItem[]; // Array of materials
+
+  // Legacy single material support (for backward compatibility)
+  materialId?: string;
+  weight?: number;
+
   dispatchLocationId: string;
   deliveryLocationId: string | null;
-  weight: number;
   dispatchTimestamp: Timestamp;
   deliveryTimestamp: Timestamp | null;
   status: ShipmentStatus;
@@ -58,15 +72,124 @@ export interface Shipment {
   // Optional: Denormalized data for easier display
   truckPlate?: string;
   driverName?: string;
-  materialName?: string;
+  materialName?: string; // For single material backward compatibility
   dispatchLocationName?: string;
   deliveryLocationName?: string;
+
+  // Additional fields for reception shipments
+  isReception?: boolean; // Flag to identify reception shipments
+  receptionId?: string; // Reference to reception record
+  purchaseOrderNumber?: string; // Reference to purchase order
+  supplierName?: string; // For reception shipments
 }
 
-export type TicketType = "dispatch" | "delivery";
+export type TicketType = "dispatch" | "delivery" | "reception";
 
 export interface Ticket extends BaseDoc {
-  shipmentId: string;
+  shipmentId?: string; // Optional for reception tickets
+  receptionId?: string; // For reception tickets
   type: TicketType;
-  // Add any other relevant ticket-specific fields here
+
+  // Multi-material support - denormalized for display
+  materials?: ShipmentItem[]; // Array of materials in this ticket
+
+  // Reception-specific fields
+  receivedBy?: string; // User ID who received (for reception tickets)
+  receivedByName?: string; // User name who received (for reception tickets)
+  receptionDate?: Timestamp; // When the reception occurred
+  purchaseOrderNumber?: string; // Reference to purchase order
+  supplierName?: string; // Supplier name for reception tickets
+
+  // Denormalized shipment data for easy display
+  folio?: string; // Shipment folio
+  truckPlate?: string;
+  driverName?: string;
+  dispatchLocationName?: string;
+  deliveryLocationName?: string;
+  dispatchTimestamp?: Timestamp;
+  deliveryTimestamp?: Timestamp;
+}
+
+// User roles for authentication
+export type UserRole = "admin" | "operator";
+
+export interface UserProfile extends BaseDoc {
+  email: string;
+  username: string;
+  role: UserRole;
+  isActive: boolean;
+  lastLogin?: Timestamp;
+  currentLocationId?: string; // Location where user is currently working
+  currentLocationName?: string; // Denormalized location name
+}
+
+// Supplier entity
+export interface Supplier extends BaseDoc {
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+}
+
+// Purchase Order status
+export type PurchaseOrderStatus = "PENDING" | "PARTIAL" | "COMPLETED" | "CANCELLED";
+
+// Purchase Order Item
+export interface PurchaseOrderItem {
+  materialId: string;
+  materialName: string; // Denormalized
+  materialUnit: string; // Denormalized
+  orderedQuantity: number;
+  receivedQuantity: number;
+  pendingQuantity: number; // orderedQuantity - receivedQuantity
+}
+
+// Purchase Order
+export interface PurchaseOrder extends BaseDoc {
+  orderNumber: string; // Auto-generated order number
+  supplierId: string;
+  supplierName: string; // Denormalized
+  deliveryLocationId: string;
+  deliveryLocationName: string; // Denormalized
+  items: PurchaseOrderItem[];
+  status: PurchaseOrderStatus;
+  orderDate: Timestamp;
+  expectedDeliveryDate?: Timestamp;
+  notes?: string;
+  createdBy: string; // User ID who created the order
+  createdByName: string; // Denormalized user name
+}
+
+// Reception status for individual items
+export type ReceptionItemStatus = "PENDING" | "COMPLETED" | "OVER_RECEIVED";
+
+// Reception Item (for partial receptions)
+export interface ReceptionItem {
+  materialId: string;
+  materialName: string; // Denormalized
+  materialUnit: string; // Denormalized
+  orderedQuantity: number;
+  previouslyReceived: number;
+  currentReceived: number;
+  totalReceived: number; // previouslyReceived + currentReceived
+  pendingQuantity: number; // orderedQuantity - totalReceived
+  status: ReceptionItemStatus;
+}
+
+// Reception record
+export interface Reception extends BaseDoc {
+  receptionNumber: string; // Auto-generated reception number
+  purchaseOrderId: string;
+  purchaseOrderNumber: string; // Denormalized
+  supplierId: string;
+  supplierName: string; // Denormalized
+  deliveryLocationId: string;
+  deliveryLocationName: string; // Denormalized
+  items: ReceptionItem[];
+  receptionDate: Timestamp;
+  receivedBy: string; // User ID who received the order
+  receivedByName: string; // Denormalized user name
+  notes?: string;
+  isPartialReception: boolean;
 }

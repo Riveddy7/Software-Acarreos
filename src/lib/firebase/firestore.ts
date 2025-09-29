@@ -18,6 +18,10 @@ export const TRUCKS_COLLECTION = 'trucks';
 export const DRIVERS_COLLECTION = 'drivers';
 export const MATERIALS_COLLECTION = 'materials';
 export const LOCATIONS_COLLECTION = 'locations';
+export const USERS_COLLECTION = 'users';
+export const SUPPLIERS_COLLECTION = 'suppliers';
+export const PURCHASE_ORDERS_COLLECTION = 'purchaseOrders';
+export const RECEPTIONS_COLLECTION = 'receptions';
 
 /**
  * Fetches all documents from a specified collection and orders them by creation date.

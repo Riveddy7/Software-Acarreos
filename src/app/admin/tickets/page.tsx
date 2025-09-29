@@ -59,25 +59,84 @@ export default function AdminTicketsPage() {
               <tr>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">ID Ticket</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">ID Acarreo</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Fecha Creación</th>
+                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Folio</th>
+                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Materiales</th>
+                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Fecha</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
               </tr>
             </thead>
             <tbody>
-              {tickets.map((ticket) => (
-                <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4 font-mono text-sm text-gray-700">{ticket.id}</td>
-                  <td className="py-4 px-4 text-gray-700">{ticket.type === 'dispatch' ? 'Despacho' : 'Entrega'}</td>
-                  <td className="py-4 px-4 font-mono text-sm text-gray-700">{ticket.shipmentId}</td>
-                  <td className="py-4 px-4 text-sm text-gray-700">{formatDate(ticket.createdAt)}</td>
-                  <td className="py-4 px-4 text-center">
-                    <Link href={`/admin/tickets/${ticket.id}`} className="text-blue-600 hover:underline text-sm">
-                      Ver Ticket
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {tickets.map((ticket) => {
+                const getTypeLabel = (type: string) => {
+                  switch (type) {
+                    case 'dispatch': return 'Despacho';
+                    case 'delivery': return 'Entrega';
+                    case 'reception': return 'Recepción';
+                    default: return type;
+                  }
+                };
+
+                const getMaterialsDisplay = (ticket: Ticket) => {
+                  if (ticket.materials && ticket.materials.length > 0) {
+                    if (ticket.materials.length === 1) {
+                      return ticket.materials[0].materialName;
+                    } else {
+                      return `${ticket.materials.length} materiales`;
+                    }
+                  }
+                  return 'N/A';
+                };
+
+                const getDisplayDate = (ticket: Ticket) => {
+                  if (ticket.type === 'reception' && ticket.receptionDate) {
+                    return formatDate(ticket.receptionDate);
+                  }
+                  return formatDate(ticket.createdAt);
+                };
+
+                return (
+                  <tr key={ticket.id} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="py-4 px-4 font-mono text-sm text-gray-700">{ticket.id}</td>
+                    <td className="py-4 px-4">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        ticket.type === 'reception' ? 'bg-purple-100 text-purple-800' :
+                        ticket.type === 'dispatch' ? 'bg-blue-100 text-blue-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                        {getTypeLabel(ticket.type)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 font-mono text-sm text-gray-700">
+                      {ticket.folio || ticket.shipmentId || (ticket.type === 'reception' ? ticket.purchaseOrderNumber : 'N/A')}
+                    </td>
+                    <td className="py-4 px-4 text-gray-700">
+                      {ticket.materials && ticket.materials.length > 1 ? (
+                        <div>
+                          <div className="font-medium">{getMaterialsDisplay(ticket)}</div>
+                          <details className="mt-1">
+                            <summary className="text-xs text-blue-600 cursor-pointer">Ver detalles</summary>
+                            <div className="mt-2 space-y-1">
+                              {ticket.materials.map((material, index) => (
+                                <div key={index} className="text-xs text-gray-600">
+                                  {material.materialName}: {material.weight} {material.materialUnit}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      ) : (
+                        getMaterialsDisplay(ticket)
+                      )}
+                    </td>
+                    <td className="py-4 px-4 text-sm text-gray-700">{getDisplayDate(ticket)}</td>
+                    <td className="py-4 px-4 text-center">
+                      <Link href={`/admin/tickets/${ticket.id}`} className="text-blue-600 hover:underline text-sm">
+                        Ver Ticket
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
