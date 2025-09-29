@@ -194,7 +194,7 @@ export default function DeliveryPage() {
             <p className="text-gray-700"><strong>Folio:</strong> {foundShipment.folio}</p> {/* Added text color */}
             <p className="text-gray-700"><strong>Camión:</strong> {getTruckPlate(foundShipment.truckId)}</p>
             <p className="text-gray-700"><strong>Chofer:</strong> {getDriverName(foundShipment.driverId)}</p>
-            <p className="text-gray-700"><strong>Material:</strong> {getMaterialName(foundShipment.materialId)}</p>
+            <p className="text-gray-700"><strong>Material:</strong> {foundShipment.materialId ? getMaterialName(foundShipment.materialId) : 'N/A'}</p>
             <p className="text-gray-700"><strong>Peso:</strong> {foundShipment.weight}</p>
             <p className="text-gray-700"><strong>Origen:</strong> {getLocationName(foundShipment.dispatchLocationId)}</p>
           </div>

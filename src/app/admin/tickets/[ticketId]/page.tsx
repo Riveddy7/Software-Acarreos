@@ -1,13 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Timestamp, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Ticket, PurchaseOrder } from '@/models/types';
 import { TICKETS_COLLECTION, PURCHASE_ORDERS_COLLECTION, getCollection } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
-import TicketPrintable from '@/components/admin/TicketPrintable';
 import jsPDF from 'jspdf';
 import QRCodeStyling from 'qr-code-styling';
 
@@ -15,7 +14,6 @@ export default function AdminTicketDetailPage() {
   const router = useRouter();
   const params = useParams();
   const ticketId = params.ticketId as string;
-  const printRef = useRef<HTMLDivElement>(null);
 
   const [ticket, setTicket] = useState<Ticket | null>(null);
   const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrder | null>(null);
@@ -432,20 +430,6 @@ export default function AdminTicketDetailPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      {/* Hidden printable version for PDF generation */}
-      {showPrintableVersion && (
-        <div
-          ref={printRef}
-          style={{
-            position: 'absolute',
-            left: '-9999px',
-            top: '-9999px',
-            width: '800px'
-          }}
-        >
-          <TicketPrintable ticket={ticket} purchaseOrder={purchaseOrder} />
-        </div>
-      )}
 
       <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg border border-gray-200">
         {/* Header */}

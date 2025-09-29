@@ -15,8 +15,6 @@ export default function AdminTicketReaderPage() {
 
 
   const [shipment, setShipment] = useState<Shipment | null>(null);
-  const [trucks, setTrucks] = useState<Truck[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>([]);
   const [materials, setMaterials] = useState<Material[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -35,8 +33,6 @@ export default function AdminTicketReaderPage() {
         getCollection<Material>(MATERIALS_COLLECTION),
         getCollection<Location>(LOCATIONS_COLLECTION),
       ]);
-      setTrucks(trucksData);
-      setDrivers(driversData);
       setMaterials(materialsData);
 
       // Fetch specific ticket
@@ -51,7 +47,13 @@ export default function AdminTicketReaderPage() {
 
       const fetchedTicket = { id: ticketDocSnap.id, ...ticketDocSnap.data() } as Ticket;
 
-      // Fetch specific shipment using shipmentId from ticket
+      // Fetch specific shipment using shipmentId from ticket (if it exists)
+      if (!fetchedTicket.shipmentId) {
+        setError('Ticket no tiene shipment asociado.');
+        setIsLoading(false);
+        return;
+      }
+
       const shipmentDocRef = doc(db, SHIPMENTS_COLLECTION, fetchedTicket.shipmentId);
       const shipmentDocSnap = await getDoc(shipmentDocRef);
 

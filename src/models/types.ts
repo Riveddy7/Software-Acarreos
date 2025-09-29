@@ -100,6 +100,11 @@ export interface Ticket extends BaseDoc {
   purchaseOrderNumber?: string; // Reference to purchase order
   supplierName?: string; // Supplier name for reception tickets
 
+  // Dispatch-specific fields
+  dispatchedBy?: string; // User ID who dispatched (for dispatch tickets)
+  dispatchedByName?: string; // User name who dispatched (for dispatch tickets)
+  dispatchDate?: Timestamp; // When the dispatch occurred
+
   // Denormalized shipment data for easy display
   folio?: string; // Shipment folio
   truckPlate?: string;
