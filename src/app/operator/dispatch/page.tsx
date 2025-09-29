@@ -102,7 +102,6 @@ export default function DispatchPage() {
 
   const getTruckPlate = (id: string | null) => trucks.find(t => t.id === id)?.plate || 'N/A';
   const getDriverName = (id: string | null) => drivers.find(d => d.id === id)?.name || 'N/A';
-  const getMaterialName = (id: string | null) => materials.find(m => m.id === id)?.name || 'N/A';
 
   const addMaterial = (materialId: string) => {
     const material = materials.find(m => m.id === materialId);

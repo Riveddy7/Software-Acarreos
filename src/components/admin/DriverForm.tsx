@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Driver, DriverStatus } from '@/models/types';
+import { Driver } from '@/models/types';
 
 interface DriverFormProps {
   driver?: Driver | null;

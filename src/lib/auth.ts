@@ -37,8 +37,9 @@ export async function signIn(email: string, password: string): Promise<UserProfi
     });
 
     return userProfile;
-  } catch (error: any) {
-    throw new Error(error.message || 'Error al iniciar sesión');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error al iniciar sesión';
+    throw new Error(errorMessage);
   }
 }
 
@@ -48,7 +49,7 @@ export async function signIn(email: string, password: string): Promise<UserProfi
 export async function signOutUser(): Promise<void> {
   try {
     await signOut(auth);
-  } catch (error: any) {
+  } catch {
     throw new Error('Error al cerrar sesión');
   }
 }
@@ -88,8 +89,9 @@ export async function createUser(
       id: user.uid,
       ...userProfile
     };
-  } catch (error: any) {
-    throw new Error(error.message || 'Error al crear usuario');
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Error al crear usuario';
+    throw new Error(errorMessage);
   }
 }
 
@@ -121,7 +123,7 @@ export async function updateUserProfile(
 ): Promise<void> {
   try {
     await updateDoc(doc(db, USERS_COLLECTION, uid), updates);
-  } catch (error: any) {
+  } catch {
     throw new Error('Error al actualizar perfil de usuario');
   }
 }

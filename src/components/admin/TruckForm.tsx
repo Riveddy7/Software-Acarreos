@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Truck, TruckStatus } from '@/models/types';
+import { Truck } from '@/models/types';
 
 interface TruckFormProps {
   truck?: Truck | null; // Truck to edit, or null for new truck
