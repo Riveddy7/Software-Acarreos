@@ -19,6 +19,7 @@ const pwaConfig = withPWA({
   register: true,
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 })(nextConfig as any);
 
 export default pwaConfig;
