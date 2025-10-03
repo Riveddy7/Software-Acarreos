@@ -24,7 +24,7 @@ export default function ReceptionsPage() {
     try {
       const q = query(
         collection(db, PURCHASE_ORDERS_COLLECTION),
-        where('deliveryLocationId', '==', userProfile.currentLocationId),
+        where('deliveryLocationIds', 'array-contains', userProfile.currentLocationId),
         where('status', 'in', ['PENDING', 'PARTIAL'])
       );
 
@@ -159,8 +159,8 @@ export default function ReceptionsPage() {
         purchaseOrderNumber: selectedOrder.orderNumber,
         supplierId: selectedOrder.supplierId,
         supplierName: selectedOrder.supplierName,
-        deliveryLocationId: selectedOrder.deliveryLocationId,
-        deliveryLocationName: selectedOrder.deliveryLocationName,
+        deliveryLocationId: userProfile.currentLocationId || '',
+        deliveryLocationName: userProfile.currentLocationName || '',
         items: receptionItems.filter(item => item.currentReceived > 0),
         receptionDate: Timestamp.now(),
         receivedBy: userProfile.id,
@@ -192,7 +192,7 @@ export default function ReceptionsPage() {
           driverId: '',
           materials: shipmentMaterials,
           dispatchLocationId: '',
-          deliveryLocationId: selectedOrder.deliveryLocationId,
+          deliveryLocationId: userProfile.currentLocationId || '',
           dispatchTimestamp: Timestamp.now(),
           deliveryTimestamp: Timestamp.now(),
           status: 'COMPLETADO',
@@ -201,7 +201,7 @@ export default function ReceptionsPage() {
           truckPlate: 'RECEPCIÓN',
           driverName: 'RECEPCIÓN',
           dispatchLocationName: selectedOrder.supplierName,
-          deliveryLocationName: selectedOrder.deliveryLocationName,
+          deliveryLocationName: userProfile.currentLocationName || '',
           // Reception-specific fields
           isReception: true,
           receptionId,
@@ -231,7 +231,7 @@ export default function ReceptionsPage() {
           truckPlate: 'RECEPCIÓN',
           driverName: 'RECEPCIÓN',
           dispatchLocationName: selectedOrder.supplierName,
-          deliveryLocationName: selectedOrder.deliveryLocationName,
+          deliveryLocationName: userProfile.currentLocationName || '',
           dispatchTimestamp: Timestamp.now(),
           deliveryTimestamp: Timestamp.now()
         };

@@ -93,7 +93,7 @@ export default function PurchaseOrdersPage() {
                   Proveedor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ubicación
+                  Ubicaciones
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Estado
@@ -120,8 +120,8 @@ export default function PurchaseOrdersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">{order.supplierName}</div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{order.deliveryLocationName}</div>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900">{order.deliveryLocationNames}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {getStatusBadge(order.status)}

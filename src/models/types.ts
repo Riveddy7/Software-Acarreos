@@ -155,13 +155,11 @@ export interface PurchaseOrder extends BaseDoc {
   orderNumber: string; // Auto-generated order number
   supplierId: string;
   supplierName: string; // Denormalized
-  deliveryLocationId: string;
-  deliveryLocationName: string; // Denormalized
+  deliveryLocationIds: string[]; // Multiple delivery locations
+  deliveryLocationNames: string; // Denormalized, comma-separated names
   items: PurchaseOrderItem[];
   status: PurchaseOrderStatus;
   orderDate: Timestamp;
-  expectedDeliveryDate?: Timestamp;
-  notes?: string;
   createdBy: string; // User ID who created the order
   createdByName: string; // Denormalized user name
 }

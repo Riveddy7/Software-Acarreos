@@ -1,15 +1,16 @@
 
 import { db } from '@/lib/firebase';
-import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  serverTimestamp, 
-  query, 
-  orderBy 
+import {
+  collection,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  query,
+  orderBy
 } from 'firebase/firestore';
 
 export const TICKETS_COLLECTION = 'tickets';
@@ -35,6 +36,26 @@ export async function getCollection<T extends { id: string }>(collectionName: st
     id: doc.id,
     ...doc.data(),
   } as T));
+}
+
+/**
+ * Fetches a single document from a specified collection.
+ * @param collectionName The name of the Firestore collection.
+ * @param id The ID of the document to fetch.
+ * @returns A promise that resolves to the document with its ID, or null if not found.
+ */
+export async function getDocument<T extends { id: string }>(collectionName: string, id: string): Promise<T | null> {
+  const docRef = doc(db, collectionName, id);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    return null;
+  }
+
+  return {
+    id: docSnap.id,
+    ...docSnap.data(),
+  } as T;
 }
 
 /**

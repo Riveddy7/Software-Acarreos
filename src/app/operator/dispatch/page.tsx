@@ -34,7 +34,6 @@ export default function DispatchPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [scanError, setScanError] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState<string>(''); // New state for input field
 
   const fetchMasterData = useCallback(async () => {
     try {
@@ -61,43 +60,6 @@ export default function DispatchPage() {
   useEffect(() => {
     fetchMasterData();
   }, [fetchMasterData]);
-
-  const handleIdInput = (id: string) => { // Renamed from handleScan
-    setScanError(null);
-    let isValid = false;
-    let foundItem: Truck | Driver | Material | null = null;
-
-    switch (step) {
-      case 1: // Scan Truck
-        foundItem = trucks.find(t => t.id === id) ?? null;
-        if (foundItem) {
-          setScannedTruckId(id);
-          isValid = true;
-        } else {
-          setScanError('Camión no encontrado. Ingrese un ID válido.');
-        }
-        break;
-      case 2: // Scan Driver
-        foundItem = drivers.find(d => d.id === id) ?? null;
-        if (foundItem) {
-          setScannedDriverId(id);
-          isValid = true;
-        } else {
-          setScanError('Chofer no encontrado. Ingrese un ID válido.');
-        }
-        break;
-      case 3: // Skip - materials are now selected via dropdown
-        isValid = true;
-        break;
-      default:
-        break;
-    }
-
-    if (isValid) {
-      setInputValue(''); // Clear input after successful scan
-      setStep(prev => prev + 1);
-    }
-  };
 
 
   const getTruckPlate = (id: string | null) => trucks.find(t => t.id === id)?.plate || 'N/A';
@@ -224,29 +186,63 @@ export default function DispatchPage() {
     return <p className="text-center text-red-600 text-lg bg-red-100 p-4 rounded-md border border-red-200">Error: {error}</p>; {/* Adjusted error styles */}
   }
 
-  const renderScanInput = (label: string, currentId: string | null, currentName: string | null) => (
-    <div className="text-center space-y-4">
-      <p className="text-xl font-semibold mb-4 text-gray-800">{label}</p> {/* Added text color */}
-      <input
-        type="text"
-        value={inputValue}
-        onChange={(e) => setInputValue(e.target.value)}
-        onKeyPress={(e) => {
-          if (e.key === 'Enter') {
-            handleIdInput(inputValue);
-          }
+  const renderTruckSelector = () => (
+    <div className="space-y-4">
+      <p className="text-xl font-semibold mb-4 text-gray-800 text-center">Seleccione el CAMIÓN</p>
+      <select
+        value={scannedTruckId || ''}
+        onChange={(e) => {
+          setScannedTruckId(e.target.value);
+          setScanError(null);
         }}
-        className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg text-gray-900" // Adjusted rounded and text color
-        placeholder="Escanee o ingrese el ID"
-        autoFocus // Keep focus for quick scanning
-      />
-      <button
-        onClick={() => handleIdInput(inputValue)}
-        className="w-full bg-blue-600 text-white text-lg font-bold py-3 px-6 rounded-md shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 mt-4" // Adjusted button styles
+        className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg text-gray-900"
+        autoFocus
       >
-        Confirmar ID
-      </button>
-      {currentId && <p className="mt-4 text-gray-700">ID escaneado: <span className="font-bold">{currentName}</span></p>} {/* Added text color */}
+        <option value="" disabled>Seleccione un camión</option>
+        {trucks.map(truck => (
+          <option key={truck.id} value={truck.id}>
+            {truck.plate} - {truck.model}
+          </option>
+        ))}
+      </select>
+      {scannedTruckId && (
+        <button
+          onClick={() => setStep(2)}
+          className="w-full bg-blue-600 text-white text-lg font-bold py-3 px-6 rounded-md shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 mt-4"
+        >
+          Siguiente
+        </button>
+      )}
+    </div>
+  );
+
+  const renderDriverSelector = () => (
+    <div className="space-y-4">
+      <p className="text-xl font-semibold mb-4 text-gray-800 text-center">Seleccione el CHOFER</p>
+      <select
+        value={scannedDriverId || ''}
+        onChange={(e) => {
+          setScannedDriverId(e.target.value);
+          setScanError(null);
+        }}
+        className="w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg text-gray-900"
+        autoFocus
+      >
+        <option value="" disabled>Seleccione un chofer</option>
+        {drivers.map(driver => (
+          <option key={driver.id} value={driver.id}>
+            {driver.name}
+          </option>
+        ))}
+      </select>
+      {scannedDriverId && (
+        <button
+          onClick={() => setStep(3)}
+          className="w-full bg-blue-600 text-white text-lg font-bold py-3 px-6 rounded-md shadow-lg hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 mt-4"
+        >
+          Siguiente
+        </button>
+      )}
     </div>
   );
 
@@ -256,9 +252,9 @@ export default function DispatchPage() {
 
       {scanError && <p className="text-red-600 text-center mb-4 bg-red-100 p-2 rounded-md border border-red-200">{scanError}</p>} {/* Adjusted error styles */}
 
-      {step === 1 && renderScanInput('Escanee o Ingrese el ID del CAMIÓN', scannedTruckId, getTruckPlate(scannedTruckId))}
+      {step === 1 && renderTruckSelector()}
 
-      {step === 2 && renderScanInput('Escanee o Ingrese el ID del CHOFER', scannedDriverId, getDriverName(scannedDriverId))}
+      {step === 2 && renderDriverSelector()}
 
       {step === 3 && (
         <div className="space-y-6">

@@ -26,9 +26,7 @@ export default function NewPurchaseOrderPage() {
 
   const [formData, setFormData] = useState({
     supplierId: '',
-    deliveryLocationId: '',
-    expectedDeliveryDate: '',
-    notes: ''
+    deliveryLocationIds: [] as string[]
   });
 
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
@@ -59,11 +57,19 @@ export default function NewPurchaseOrderPage() {
     }
   };
 
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+  const handleSupplierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      supplierId: e.target.value
+    }));
+  };
+
+  const toggleLocation = (locationId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveryLocationIds: prev.deliveryLocationIds.includes(locationId)
+        ? prev.deliveryLocationIds.filter(id => id !== locationId)
+        : [...prev.deliveryLocationIds, locationId]
     }));
   };
 
@@ -118,8 +124,8 @@ export default function NewPurchaseOrderPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.supplierId || !formData.deliveryLocationId || orderItems.length === 0 || !userProfile) {
-      alert('Por favor completa todos los campos requeridos y agrega al menos un producto');
+    if (!formData.supplierId || formData.deliveryLocationIds.length === 0 || orderItems.length === 0 || !userProfile) {
+      alert('Por favor completa todos los campos requeridos y agrega al menos un producto y una ubicación');
       return;
     }
 
@@ -127,10 +133,10 @@ export default function NewPurchaseOrderPage() {
 
     try {
       const supplier = suppliers.find(s => s.id === formData.supplierId);
-      const location = locations.find(l => l.id === formData.deliveryLocationId);
+      const selectedLocations = locations.filter(l => formData.deliveryLocationIds.includes(l.id));
 
-      if (!supplier || !location) {
-        throw new Error('Proveedor o ubicación no encontrados');
+      if (!supplier || selectedLocations.length === 0) {
+        throw new Error('Proveedor o ubicaciones no encontrados');
       }
 
       const purchaseOrderItems: PurchaseOrderItem[] = orderItems.map(item => ({
@@ -142,17 +148,17 @@ export default function NewPurchaseOrderPage() {
         pendingQuantity: item.quantity
       }));
 
+      const deliveryLocationNames = selectedLocations.map(l => l.name).join(', ');
+
       const purchaseOrder: Omit<PurchaseOrder, 'id' | 'createdAt'> = {
         orderNumber: generateOrderNumber(),
         supplierId: formData.supplierId,
         supplierName: supplier.name,
-        deliveryLocationId: formData.deliveryLocationId,
-        deliveryLocationName: location.name,
+        deliveryLocationIds: formData.deliveryLocationIds,
+        deliveryLocationNames: deliveryLocationNames,
         items: purchaseOrderItems,
         status: 'PENDING',
         orderDate: Timestamp.now(),
-        expectedDeliveryDate: formData.expectedDeliveryDate ? Timestamp.fromDate(new Date(formData.expectedDeliveryDate)) : undefined,
-        notes: formData.notes || undefined,
         createdBy: userProfile.id,
         createdByName: userProfile.username
       };
@@ -189,7 +195,7 @@ export default function NewPurchaseOrderPage() {
           <h2 className="text-xl font-semibold mb-4">Información Básica</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+            <div className="md:col-span-2">
               <label htmlFor="supplierId" className="block text-sm font-medium text-gray-700">
                 Proveedor *
               </label>
@@ -198,7 +204,7 @@ export default function NewPurchaseOrderPage() {
                 name="supplierId"
                 required
                 value={formData.supplierId}
-                onChange={handleFormChange}
+                onChange={handleSupplierChange}
                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
               >
                 <option value="">Selecciona un proveedor</option>
@@ -209,56 +215,32 @@ export default function NewPurchaseOrderPage() {
                 ))}
               </select>
             </div>
-
-            <div>
-              <label htmlFor="deliveryLocationId" className="block text-sm font-medium text-gray-700">
-                Ubicación de Entrega *
-              </label>
-              <select
-                id="deliveryLocationId"
-                name="deliveryLocationId"
-                required
-                value={formData.deliveryLocationId}
-                onChange={handleFormChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
-              >
-                <option value="">Selecciona una ubicación</option>
-                {locations.map(location => (
-                  <option key={location.id} value={location.id}>
-                    {location.name} - {location.address}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="expectedDeliveryDate" className="block text-sm font-medium text-gray-700">
-                Fecha Esperada de Entrega
-              </label>
-              <input
-                type="date"
-                id="expectedDeliveryDate"
-                name="expectedDeliveryDate"
-                value={formData.expectedDeliveryDate}
-                onChange={handleFormChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
-              />
-            </div>
           </div>
 
           <div className="mt-4">
-            <label htmlFor="notes" className="block text-sm font-medium text-gray-700">
-              Notas
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Ubicaciones de Entrega * (Seleccione una o más)
             </label>
-            <textarea
-              id="notes"
-              name="notes"
-              rows={3}
-              value={formData.notes}
-              onChange={handleFormChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
-              placeholder="Notas adicionales sobre la orden"
-            />
+            <div className="border border-gray-300 rounded-md p-3 space-y-2 max-h-60 overflow-y-auto">
+              {locations.map(location => (
+                <label key={location.id} className="flex items-center space-x-3 p-2 hover:bg-gray-50 rounded cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.deliveryLocationIds.includes(location.id)}
+                    onChange={() => toggleLocation(location.id)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-900">
+                    {location.name} - {location.address}
+                  </span>
+                </label>
+              ))}
+            </div>
+            {formData.deliveryLocationIds.length > 0 && (
+              <p className="mt-2 text-sm text-gray-600">
+                {formData.deliveryLocationIds.length} ubicación(es) seleccionada(s)
+              </p>
+            )}
           </div>
         </div>
 
