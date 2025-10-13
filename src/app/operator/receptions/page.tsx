@@ -125,58 +125,6 @@ export default function ReceptionsPage() {
     }));
   };
 
-  const toggleExpanded = (materialId: string) => {
-    const newExpanded = new Set(expandedItems);
-    if (newExpanded.has(materialId)) {
-      newExpanded.delete(materialId);
-    } else {
-      newExpanded.add(materialId);
-    }
-    setExpandedItems(newExpanded);
-  };
-
-  const receiveAll = (materialId: string) => {
-    setReceptionItems(items => items.map(item => {
-      if (item.materialId === materialId) {
-        const currentReceived = item.pendingQuantity;
-        const totalReceived = item.previouslyReceived + currentReceived;
-
-        return {
-          ...item,
-          currentReceived,
-          totalReceived,
-          pendingQuantity: 0,
-          status: 'COMPLETED' as const
-        };
-      }
-      return item;
-    }));
-  };
-
-  const updateCurrentReceived = (materialId: string, amount: number) => {
-    setReceptionItems(items => items.map(item => {
-      if (item.materialId === materialId) {
-        const currentReceived = Math.max(0, amount);
-        const totalReceived = item.previouslyReceived + currentReceived;
-        const pendingQuantity = item.orderedQuantity - totalReceived;
-
-        let status: 'PENDING' | 'COMPLETED' | 'OVER_RECEIVED' = 'PENDING';
-        if (totalReceived >= item.orderedQuantity) {
-          status = totalReceived > item.orderedQuantity ? 'OVER_RECEIVED' : 'COMPLETED';
-        }
-
-        return {
-          ...item,
-          currentReceived,
-          totalReceived,
-          pendingQuantity,
-          status
-        };
-      }
-      return item;
-    }));
-  };
-
   const generateReceptionNumber = () => {
     const date = new Date();
     const year = date.getFullYear();
@@ -221,7 +169,7 @@ export default function ReceptionsPage() {
         deliveryLocationName: userProfile.currentLocationName || '',
         truckId: truck.id,
         truckPlate: truck.plate,
-        truckVolume: truck.volume,
+        truckVolume: truck.volume ?? 0,
         items: receptionItems.filter(item => item.currentReceived > 0),
         receptionDate: Timestamp.now(),
         receivedBy: userProfile.id,

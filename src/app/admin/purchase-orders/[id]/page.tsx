@@ -39,7 +39,7 @@ export default function PurchaseOrderDetailPage() {
 
   useEffect(() => {
     loadData();
-  }, [orderId]);
+  }, [orderId, loadData]);
 
   const loadData = async () => {
     try {
