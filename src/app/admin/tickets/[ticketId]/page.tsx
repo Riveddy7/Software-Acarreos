@@ -596,6 +596,12 @@ export default function AdminTicketDetailPage() {
           >
             Volver a Tickets
           </button>
+          <button
+            onClick={() => router.push('/operator')}
+            className="bg-gray-600 text-white text-lg font-medium py-3 px-8 rounded-lg shadow-md hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500"
+          >
+            Modo Operador
+          </button>
         </div>
       </div>
     </div>
