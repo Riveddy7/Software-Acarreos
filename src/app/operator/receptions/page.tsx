@@ -12,7 +12,6 @@ import { Timestamp } from 'firebase/firestore';
 export default function ReceptionsPage() {
   const [pendingOrders, setPendingOrders] = useState<PurchaseOrder[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<PurchaseOrder | null>(null);
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [receptionItems, setReceptionItems] = useState<ReceptionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

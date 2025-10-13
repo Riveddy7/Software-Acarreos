@@ -37,51 +37,29 @@ export default function PurchaseOrderDetailPage() {
     quantity: 0
   });
 
-  useEffect(() => {
-    loadData();
-  }, [orderId, loadData]);
+  const [editedItems, setEditedItems] = useState<PurchaseOrderItem[]>([]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    if (typeof id !== 'string') return;
     try {
-      const [orderData, suppliersData, materialsData, locationsData] = await Promise.all([
-        getDocument<PurchaseOrder>(PURCHASE_ORDERS_COLLECTION, orderId),
-        getCollection<Supplier>(SUPPLIERS_COLLECTION),
-        getCollection<Material>(MATERIALS_COLLECTION),
-        getCollection<Location>(LOCATIONS_COLLECTION)
-      ]);
-
-      if (!orderData) {
-        alert('Orden de compra no encontrada');
-        router.push('/admin/purchase-orders');
-        return;
-      }
-
-      setOrder(orderData);
-      setSuppliers(suppliersData);
-      setMaterials(materialsData);
-      setLocations(locationsData);
-
-      // Initialize form data
-      setFormData({
-        supplierId: orderData.supplierId,
-        deliveryLocationIds: orderData.deliveryLocationIds
-      });
-
-      // Initialize order items
-      const items: OrderItem[] = orderData.items.map(item => ({
-        materialId: item.materialId,
-        materialName: item.materialName,
-        materialUnit: item.materialUnit,
-        quantity: item.orderedQuantity
-      }));
-      setOrderItems(items);
+      setLoading(true);
+      const data = await getDocument<PurchaseOrder>(PURCHASE_ORDERS_COLLECTION, id);
+      if (data) {
+        setOrder(data);
+        setEditedItems(JSON.parse(JSON.stringify(data.items))); // Deep copy
+      } else {
+        console.error('Order not found');
+      }d
     } catch (error) {
-      console.error('Error loading data:', error);
-      alert('Error al cargar la orden de compra');
+      console.error('Error loading purchase order:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleSupplierChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setFormData(prev => ({
