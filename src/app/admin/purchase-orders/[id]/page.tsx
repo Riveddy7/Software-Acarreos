@@ -120,7 +120,7 @@ export default function PurchaseOrderPage() {
           <div className="bg-gray-50 p-3 rounded-lg">
             <p className="font-semibold text-gray-600">Ubicaciones de Entrega:</p>
             <ul className="list-disc list-inside text-gray-800">
-              {order.deliveryLocationNames.map((name, index) => (
+              {order.deliveryLocationNames.split(', ').map((name, index) => (
                 <li key={index}>{name}</li>
               ))}
             </ul>
