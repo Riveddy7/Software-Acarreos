@@ -98,6 +98,7 @@ export default function TrucksPage() {
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">ID del Activo</th> {/* Adjusted text styles */}
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Placa</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Modelo</th>
+                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Volumen (M³)</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Código QR</th>
                 <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
@@ -113,6 +114,7 @@ export default function TrucksPage() {
                   </td> {/* Adjusted text color and made it a link */}
                   <td className="py-4 px-4 font-medium text-gray-900">{truck.plate}</td> {/* Adjusted text color and weight */}
                   <td className="py-4 px-4 text-gray-700">{truck.model}</td> {/* Adjusted text color */}
+                  <td className="py-4 px-4 text-gray-700 font-medium">{truck.volume || 'N/A'}</td> {/* Volume column */}
                   <td className="py-4 px-4">
                     <span className={`px-2 py-1 rounded-full text-xs font-semibold ${truck.status === 'IN_SHIPMENT' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
                       {truck.status === 'IN_SHIPMENT' ? 'En Acarreo' : 'Disponible'}

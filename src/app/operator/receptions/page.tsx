@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { addDocument, updateDocument } from '@/lib/firebase/firestore';
-import { PurchaseOrder, Reception, ReceptionItem, Shipment, Ticket, ShipmentItem } from '@/models/types';
-import { PURCHASE_ORDERS_COLLECTION, RECEPTIONS_COLLECTION, SHIPMENTS_COLLECTION, TICKETS_COLLECTION } from '@/lib/firebase/firestore';
+import { addDocument, updateDocument, getDocument } from '@/lib/firebase/firestore';
+import { PurchaseOrder, Reception, ReceptionItem, Shipment, Ticket, ShipmentItem, Truck } from '@/models/types';
+import { PURCHASE_ORDERS_COLLECTION, RECEPTIONS_COLLECTION, SHIPMENTS_COLLECTION, TICKETS_COLLECTION, TRUCKS_COLLECTION } from '@/lib/firebase/firestore';
 import { query, where, getDocs, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Timestamp } from 'firebase/firestore';
@@ -16,6 +16,9 @@ export default function ReceptionsPage() {
   const [receptionItems, setReceptionItems] = useState<ReceptionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [truckCode, setTruckCode] = useState('');
+  const [truck, setTruck] = useState<Truck | null>(null);
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string>('');
   const { userProfile } = useAuth();
 
   const loadPendingOrders = useCallback(async () => {
@@ -51,6 +54,9 @@ export default function ReceptionsPage() {
   const selectOrder = (order: PurchaseOrder) => {
     setSelectedOrder(order);
     setExpandedItems(new Set());
+    setTruckCode('');
+    setTruck(null);
+    setSelectedMaterialId('');
 
     const items: ReceptionItem[] = order.items.map(item => ({
       materialId: item.materialId,
@@ -65,6 +71,58 @@ export default function ReceptionsPage() {
     }));
 
     setReceptionItems(items);
+  };
+
+  const handleTruckCodeSubmit = async () => {
+    if (!truckCode) {
+      alert('Ingrese el código del camión');
+      return;
+    }
+
+    try {
+      const truckData = await getDocument<Truck>(TRUCKS_COLLECTION, truckCode);
+      if (!truckData) {
+        alert('Camión no encontrado');
+        return;
+      }
+      if (!truckData.volume || truckData.volume <= 0) {
+        alert('Este camión no tiene un volumen configurado. Por favor, edita el camión y agrega el volumen.');
+        return;
+      }
+      setTruck(truckData);
+    } catch (error) {
+      console.error('Error loading truck:', error);
+      alert('Error al cargar el camión');
+    }
+  };
+
+  const handleMaterialSelection = (materialId: string) => {
+    if (!truck || !truck.volume) return;
+
+    setSelectedMaterialId(materialId);
+
+    // Auto-calculate based on truck volume
+    setReceptionItems(items => items.map(item => {
+      if (item.materialId === materialId) {
+        const currentReceived = truck.volume!;
+        const totalReceived = item.previouslyReceived + currentReceived;
+        const pendingQuantity = item.orderedQuantity - totalReceived;
+
+        let status: 'PENDING' | 'COMPLETED' | 'OVER_RECEIVED' = 'PENDING';
+        if (totalReceived >= item.orderedQuantity) {
+          status = totalReceived > item.orderedQuantity ? 'OVER_RECEIVED' : 'COMPLETED';
+        }
+
+        return {
+          ...item,
+          currentReceived,
+          totalReceived,
+          pendingQuantity,
+          status
+        };
+      }
+      return item;
+    }));
   };
 
   const toggleExpanded = (materialId: string) => {
@@ -138,7 +196,7 @@ export default function ReceptionsPage() {
   };
 
   const handleReception = async () => {
-    if (!selectedOrder || !userProfile) return;
+    if (!selectedOrder || !userProfile || !truck) return;
 
     const hasItemsToReceive = receptionItems.some(item => item.currentReceived > 0);
     if (!hasItemsToReceive) {
@@ -161,6 +219,9 @@ export default function ReceptionsPage() {
         supplierName: selectedOrder.supplierName,
         deliveryLocationId: userProfile.currentLocationId || '',
         deliveryLocationName: userProfile.currentLocationName || '',
+        truckId: truck.id,
+        truckPlate: truck.plate,
+        truckVolume: truck.volume,
         items: receptionItems.filter(item => item.currentReceived > 0),
         receptionDate: Timestamp.now(),
         receivedBy: userProfile.id,
@@ -188,7 +249,7 @@ export default function ReceptionsPage() {
         // Create single multi-material shipment
         const shipment: Omit<Shipment, 'id'> = {
           folio: shipmentFolio,
-          truckId: '',
+          truckId: truck.id,
           driverId: '',
           materials: shipmentMaterials,
           dispatchLocationId: '',
@@ -198,7 +259,7 @@ export default function ReceptionsPage() {
           status: 'COMPLETADO',
           createdAt: Timestamp.now(),
           // Denormalized data
-          truckPlate: 'RECEPCIÓN',
+          truckPlate: truck.plate,
           driverName: 'RECEPCIÓN',
           dispatchLocationName: selectedOrder.supplierName,
           deliveryLocationName: userProfile.currentLocationName || '',
@@ -228,7 +289,7 @@ export default function ReceptionsPage() {
           supplierName: selectedOrder.supplierName,
           // Denormalized shipment data
           folio: shipmentFolio,
-          truckPlate: 'RECEPCIÓN',
+          truckPlate: truck.plate,
           driverName: 'RECEPCIÓN',
           dispatchLocationName: selectedOrder.supplierName,
           deliveryLocationName: userProfile.currentLocationName || '',
@@ -391,7 +452,12 @@ export default function ReceptionsPage() {
           <div className="bg-white shadow-sm border-b border-gray-200 p-4">
             <div className="flex items-center justify-between mb-2">
               <button
-                onClick={() => setSelectedOrder(null)}
+                onClick={() => {
+                  setSelectedOrder(null);
+                  setTruck(null);
+                  setTruckCode('');
+                  setSelectedMaterialId('');
+                }}
                 className="text-blue-600 font-medium text-sm"
               >
                 ← Volver
@@ -408,129 +474,161 @@ export default function ReceptionsPage() {
 
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto p-4">
-            <div className="space-y-3">
-              {receptionItems.map((item) => (
-                <div key={item.materialId} className="bg-white rounded-xl shadow-sm border border-gray-200">
-                  {/* Item header - always visible */}
-                  <div
-                    className="p-4 cursor-pointer active:bg-gray-50"
-                    onClick={() => toggleExpanded(item.materialId)}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex-1 pr-3">
-                        <h3 className="font-medium text-gray-900 text-sm leading-tight">{item.materialName}</h3>
-                        <p className="text-gray-500 text-xs">{item.materialUnit}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(item.status)}`}>
-                        {getStatusText(item.status)}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 text-xs">
-                      <div>
-                        <span className="text-gray-500 block">Ordenado</span>
-                        <span className="font-medium text-gray-900">{item.orderedQuantity}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block">Recibido</span>
-                        <span className="font-medium text-gray-900">{item.previouslyReceived}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-500 block">Pendiente</span>
-                        <span className="font-medium text-yellow-600">{item.pendingQuantity}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between mt-3">
-                      <div className="text-xs text-gray-500">
-                        {expandedItems.has(item.materialId) ? 'Ocultar opciones' : 'Ver opciones'}
-                      </div>
-                      <div className="text-gray-400">
-                        {expandedItems.has(item.materialId) ? '▲' : '▼'}
-                      </div>
-                    </div>
+            {/* Step 1: Scan truck */}
+            {!truck && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 className="font-semibold text-lg text-gray-900 mb-4">Paso 1: Escanear Camión</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Código del Camión
+                    </label>
+                    <input
+                      type="text"
+                      value={truckCode}
+                      onChange={(e) => setTruckCode(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleTruckCodeSubmit();
+                        }
+                      }}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Escanea o ingresa el código"
+                      autoFocus
+                    />
                   </div>
+                  <button
+                    onClick={handleTruckCodeSubmit}
+                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg font-medium text-base active:bg-blue-700"
+                  >
+                    Confirmar Camión
+                  </button>
+                </div>
+              </div>
+            )}
 
-                  {/* Expanded options */}
-                  {expandedItems.has(item.materialId) && (
-                    <div className="px-4 pb-4 pt-0 border-t border-gray-100">
-                      <div className="space-y-3">
-                        {/* Quick actions */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <button
-                            onClick={() => receiveAll(item.materialId)}
-                            disabled={item.pendingQuantity <= 0}
-                            className="bg-green-600 text-white px-4 py-3 rounded-lg font-medium text-sm disabled:bg-gray-300 disabled:cursor-not-allowed active:bg-green-700"
-                          >
-                            Recibir Todo
-                            <div className="text-xs opacity-90">({item.pendingQuantity})</div>
-                          </button>
-                          <button
-                            onClick={() => updateCurrentReceived(item.materialId, 0)}
-                            className="bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium text-sm active:bg-gray-300"
-                          >
-                            Limpiar
-                          </button>
+            {/* Step 2: Select material */}
+            {truck && !selectedMaterialId && (
+              <div className="space-y-4">
+                <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg">
+                  <div className="font-medium">✓ Camión {truck.plate}</div>
+                  <div className="text-sm">Volumen: {truck.volume || 'N/A'} M³</div>
+                </div>
+
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="font-semibold text-lg text-gray-900 mb-4">Paso 2: Seleccionar Material</h3>
+                  <div className="space-y-3">
+                    {receptionItems
+                      .filter(item => item.pendingQuantity > 0)
+                      .map((item) => (
+                        <button
+                          key={item.materialId}
+                          onClick={() => handleMaterialSelection(item.materialId)}
+                          className="w-full text-left bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-lg p-4 border border-gray-200"
+                        >
+                          <div className="font-medium text-gray-900">{item.materialName}</div>
+                          <div className="text-sm text-gray-600 mt-1">
+                            Pendiente: {item.pendingQuantity} {item.materialUnit}
+                          </div>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Step 3: Confirm reception */}
+            {truck && selectedMaterialId && (
+              <div className="space-y-4">
+                <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg">
+                  <div className="font-medium">✓ Camión {truck.plate}</div>
+                  <div className="text-sm">Volumen: {truck.volume || 'N/A'} M³</div>
+                </div>
+
+                {receptionItems.filter(item => item.materialId === selectedMaterialId).map((item) => (
+                  <div key={item.materialId} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="font-semibold text-lg text-gray-900 mb-4">Paso 3: Confirmar Recepción</h3>
+
+                    <div className="space-y-4">
+                      <div className="bg-blue-50 rounded-lg p-4">
+                        <div className="font-medium text-gray-900 mb-2">{item.materialName}</div>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-600">Volumen Camión:</span>
+                            <div className="font-medium text-blue-700">{truck.volume || 'N/A'} {item.materialUnit}</div>
+                          </div>
+                          <div>
+                            <span className="text-gray-600">Pendiente:</span>
+                            <div className="font-medium text-gray-900">{item.pendingQuantity} {item.materialUnit}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-gray-200 pt-4">
+                        <div className="text-sm font-medium text-gray-700 mb-2">Cantidad a Recibir:</div>
+                        <div className="text-3xl font-bold text-green-600 mb-4">
+                          {item.currentReceived} {item.materialUnit}
                         </div>
 
-                        {/* Manual input */}
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 mb-2">
-                            Cantidad a recibir ahora:
-                          </label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={item.currentReceived || ''}
-                            onChange={(e) => updateCurrentReceived(item.materialId, parseFloat(e.target.value) || 0)}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base text-center font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="0"
-                          />
-                        </div>
-
-                        {/* Result preview */}
                         {item.currentReceived > 0 && (
-                          <div className="bg-blue-50 rounded-lg p-3">
-                            <div className="text-xs text-blue-800 font-medium mb-1">Resultado:</div>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="bg-gray-50 rounded-lg p-4">
+                            <div className="text-xs text-gray-600 mb-2">Después de esta recepción:</div>
+                            <div className="grid grid-cols-2 gap-3 text-sm">
                               <div>
-                                <span className="text-blue-600">Total recibido:</span>
+                                <span className="text-gray-500">Total Recibido:</span>
                                 <div className="font-medium">{item.totalReceived}</div>
                               </div>
                               <div>
-                                <span className="text-blue-600">Quedará pendiente:</span>
-                                <div className="font-medium">{item.pendingQuantity}</div>
+                                <span className="text-gray-500">Quedará Pendiente:</span>
+                                <div className="font-medium text-yellow-600">{item.pendingQuantity}</div>
                               </div>
                             </div>
                           </div>
                         )}
                       </div>
+
+                      <button
+                        onClick={() => {
+                          setSelectedMaterialId('');
+                          setTruck(null);
+                          setTruckCode('');
+                        }}
+                        className="w-full bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium active:bg-gray-300"
+                      >
+                        Cambiar Material
+                      </button>
                     </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Fixed footer with action button */}
-          <div className="bg-white border-t border-gray-200 p-4">
-            <div className="flex space-x-3">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="flex-1 bg-gray-200 text-gray-700 px-4 py-4 rounded-xl font-medium text-base active:bg-gray-300"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleReception}
-                disabled={submitting || !receptionItems.some(item => item.currentReceived > 0)}
-                className="flex-2 bg-blue-600 text-white px-6 py-4 rounded-xl font-medium text-base disabled:bg-gray-300 disabled:cursor-not-allowed active:bg-blue-700"
-              >
-                {submitting ? 'Registrando...' : 'Confirmar Recepción'}
-              </button>
+          {/* Fixed footer with action button - only show when ready to submit */}
+          {truck && selectedMaterialId && (
+            <div className="bg-white border-t border-gray-200 p-4">
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    setTruck(null);
+                    setTruckCode('');
+                    setSelectedMaterialId('');
+                  }}
+                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-4 rounded-xl font-medium text-base active:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleReception}
+                  disabled={submitting || !receptionItems.some(item => item.currentReceived > 0)}
+                  className="flex-2 bg-green-600 text-white px-6 py-4 rounded-xl font-medium text-base disabled:bg-gray-300 disabled:cursor-not-allowed active:bg-green-700"
+                >
+                  {submitting ? 'Registrando...' : 'Confirmar Recepción'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

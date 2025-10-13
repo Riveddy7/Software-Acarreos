@@ -12,6 +12,7 @@ export type TruckStatus = "AVAILABLE" | "IN_SHIPMENT";
 export interface Truck extends BaseDoc {
   plate: string;
   model: string;
+  volume?: number; // Volumetric capacity in M3 (optional for backward compatibility)
   status: TruckStatus;
   currentShipmentId?: string; // Optional, only if IN_SHIPMENT
   currentDriverId?: string;   // Optional, only if IN_SHIPMENT
@@ -189,6 +190,9 @@ export interface Reception extends BaseDoc {
   supplierName: string; // Denormalized
   deliveryLocationId: string;
   deliveryLocationName: string; // Denormalized
+  truckId: string; // Truck ID that delivered the materials
+  truckPlate: string; // Denormalized truck plate
+  truckVolume: number; // Denormalized truck volume in M3
   items: ReceptionItem[];
   receptionDate: Timestamp;
   receivedBy: string; // User ID who received the order

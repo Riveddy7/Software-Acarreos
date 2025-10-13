@@ -13,24 +13,32 @@ interface TruckFormProps {
 export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
   const [plate, setPlate] = useState('');
   const [model, setModel] = useState('');
+  const [volume, setVolume] = useState('');
 
   useEffect(() => {
     if (truck) {
       setPlate(truck.plate);
       setModel(truck.model);
+      setVolume(truck.volume?.toString() || '');
     } else {
       setPlate('');
       setModel('');
+      setVolume('');
     }
   }, [truck]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!plate || !model) {
+    if (!plate || !model || !volume) {
       alert('Por favor, complete todos los campos.');
       return;
     }
-    onSave({ plate, model, status: truck?.status || 'AVAILABLE' });
+    const volumeNum = parseFloat(volume);
+    if (isNaN(volumeNum) || volumeNum <= 0) {
+      alert('Por favor, ingrese un volumen válido.');
+      return;
+    }
+    onSave({ plate, model, volume: volumeNum, status: truck?.status || 'AVAILABLE' });
   };
 
   return (
@@ -60,6 +68,19 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
             onChange={(e) => setModel(e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900" // Adjusted border-radius and text color
             placeholder="Ej: Volvo FMX"
+          />
+        </div>
+        <div>
+          <label htmlFor="volume" className="block text-sm font-medium text-gray-700 mb-1">Volumen (M³)</label>
+          <input
+            type="number"
+            id="volume"
+            value={volume}
+            onChange={(e) => setVolume(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            placeholder="Ej: 20"
+            step="0.1"
+            min="0"
           />
         </div>
       </div>
