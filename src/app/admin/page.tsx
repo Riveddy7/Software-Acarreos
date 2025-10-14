@@ -114,11 +114,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className={`border-b pb-4 ${isDark ? 'border-[#313636]' : 'border-gray-200'}`}>
-        <h1 className={`text-3xl font-light ${isDark ? 'text-[#f6eef6]' : 'text-gray-900'}`}>Dashboard</h1>
-        <p className={`mt-1 ${isDark ? 'text-[#7a7282]' : 'text-gray-600'}`}>Resumen general del sistema</p>
-      </div>
+
 
       {/* KPIs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

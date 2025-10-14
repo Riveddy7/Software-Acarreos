@@ -12,6 +12,7 @@ export default function SuppliersPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     loadSuppliers();
@@ -77,26 +78,43 @@ export default function SuppliersPage() {
     setEditingSupplier(null);
   };
 
+  const filteredSuppliers = suppliers.filter(supplier =>
+    supplier.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loading) {
     return <div className="p-8">Cargando proveedores...</div>;
   }
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Proveedores</h1>
-        <button
-          onClick={openAddModal}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          Agregar Proveedor
-        </button>
+      <div className="grid grid-cols-4 gap-4 mb-4 items-center">
+        <div className="col-span-3">
+          <input
+            type="text"
+            placeholder="Buscar por nombre de proveedor..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md shadow-[#2D3748]/30"
+          />
+        </div>
+        <div className="col-span-1 flex justify-end">
+          <button
+            onClick={openAddModal}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center shadow-md shadow-[#2D3748]/30"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+            </svg>
+            Nuevo Proveedor
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        {suppliers.length === 0 ? (
+      <div className="bg-white shadow-md shadow-[#2D3748]/30 rounded-lg overflow-hidden">
+        {filteredSuppliers.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No hay proveedores registrados
+            No hay proveedores que coincidan con la búsqueda
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -120,7 +138,7 @@ export default function SuppliersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {suppliers.map((supplier) => (
+              {filteredSuppliers.map((supplier) => (
                 <tr key={supplier.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="font-medium text-gray-900">{supplier.name}</div>
@@ -140,15 +158,19 @@ export default function SuppliersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button
                       onClick={() => openEditModal(supplier)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-100"
                     >
-                      Editar
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L15.232 5.232z" />
+                      </svg>
                     </button>
                     <button
                       onClick={() => handleDeleteSupplier(supplier.id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-100"
                     >
-                      Eliminar
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </td>
                 </tr>

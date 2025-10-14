@@ -9,6 +9,8 @@ import { PURCHASE_ORDERS_COLLECTION } from '@/lib/firebase/firestore';
 export default function PurchaseOrdersPage() {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const router = useRouter();
 
   useEffect(() => {
@@ -61,26 +63,59 @@ export default function PurchaseOrdersPage() {
     };
   };
 
+  const filteredOrders = purchaseOrders
+    .filter(order =>
+      order.orderNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .filter(order =>
+      statusFilter === 'ALL' ? true : order.status === statusFilter
+    );
+
   if (loading) {
     return <div className="p-8">Cargando órdenes de compra...</div>;
   }
 
   return (
     <div className="p-8">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Órdenes de Compra</h1>
-        <button
-          onClick={() => router.push('/admin/purchase-orders/new')}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          Nueva Orden de Compra
-        </button>
+      <div className="grid grid-cols-3 gap-4 mb-4 items-center">
+        <div className="col-span-1">
+          <input
+            type="text"
+            placeholder="Buscar por número de orden..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md shadow-[#2D3748]/30"
+          />
+        </div>
+        <div className="col-span-1 flex justify-center">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 shadow-md shadow-[#2D3748]/30"
+          >
+            <option value="ALL">Todos los estados</option>
+            <option value="PENDING">Pendiente</option>
+            <option value="PARTIAL">Parcial</option>
+            <option value="COMPLETED">Completado</option>
+          </select>
+        </div>
+        <div className="col-span-1 flex justify-end">
+          <button
+            onClick={() => router.push('/admin/purchase-orders/new')}
+            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 flex items-center shadow-md shadow-[#2D3748]/30"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+            </svg>
+            Nueva Orden
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        {purchaseOrders.length === 0 ? (
+      <div className="bg-white shadow-md shadow-[#2D3748]/30 rounded-lg overflow-hidden">
+        {filteredOrders.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No hay órdenes de compra registradas
+            No hay órdenes de compra que coincidan con la búsqueda
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
@@ -110,7 +145,7 @@ export default function PurchaseOrdersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {purchaseOrders.map((order) => {
+              {filteredOrders.map((order) => {
                 const progress = calculateOrderProgress(order);
                 return (
                   <tr key={order.id} className="hover:bg-gray-50">
@@ -131,7 +166,7 @@ export default function PurchaseOrdersPage() {
                         {progress.completed}/{progress.total} productos
                       </div>
                       {progress.partial > 0 && (
-                        <div className="text-xs text-blue-600">
+                        <div className="text-xs text-green-600">
                           {progress.partial} parciales
                         </div>
                       )}
@@ -142,7 +177,7 @@ export default function PurchaseOrdersPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                       <button
                         onClick={() => router.push(`/admin/purchase-orders/${order.id}`)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-green-600 hover:text-green-900"
                       >
                         Ver Detalles
                       </button>

@@ -41,8 +41,8 @@ export default function MobileSidebar({ isOpen, onClose, navItems, theme }: Mobi
         <div className="w-screen max-w-xs">
           <div className={`h-full flex flex-col border-r ${isDark ? 'bg-[#313636] border-[#7a7282]/20' : 'bg-white border-gray-200'}`}>
             <div className={`px-6 py-4 flex items-center justify-between border-b ${isDark ? 'border-[#7a7282]/20' : 'border-gray-200'}`}>
-              <Link href="/admin" className={`text-lg font-light tracking-wider ${isDark ? 'text-[#f6eef6]' : 'text-gray-900'}`} onClick={onClose}>
-                ACARREOS
+              <Link href="/admin" className={`text-lg tracking-wider`} onClick={onClose} style={{ fontFamily: "'Montserrat', sans-serif" }}>
+                <span style={{ color: '#2D3748', fontWeight: 900 }}>Acarreo</span><span style={{ color: '#38A169', fontWeight: 800 }}>.mx</span>
               </Link>
               <button
                 type="button"
@@ -70,7 +70,7 @@ export default function MobileSidebar({ isOpen, onClose, navItems, theme }: Mobi
                             isActive(item.href)
                               ? isDark
                                 ? 'bg-[#7a7282]/20 text-[#f6eef6] border-l-2 border-[#bebfd5]'
-                                : 'bg-blue-50 text-blue-600 border-l-2 border-blue-600'
+                                : 'bg-[#E6F4EA] text-[#38A169] border-l-2 border-[#38A169]'
                               : isDark
                                 ? 'text-[#bebfd5] hover:bg-[#7a7282]/10 hover:text-[#f6eef6]'
                                 : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -84,12 +84,7 @@ export default function MobileSidebar({ isOpen, onClose, navItems, theme }: Mobi
                 </ul>
               </nav>
             </div>
-            <div className={`p-4 border-t ${isDark ? 'border-[#7a7282]/20' : 'border-gray-200'}`}>
-              <div className={`text-xs text-center ${isDark ? 'text-[#7a7282]' : 'text-gray-500'}`}>
-                <p>v2.04</p>
-                <p className="mt-1">IBM Carbon Design</p>
-              </div>
-            </div>
+
           </div>
         </div>
       </div>

@@ -8,10 +8,13 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 
+import { usePathname } from 'next/navigation';
+
 function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { signOut, userProfile } = useAuth();
   const { setTheme } = useTheme();
+  const pathname = usePathname();
 
   useEffect(() => {
     setTheme('light');
@@ -35,6 +38,15 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     { name: 'Operador Móvil', href: '/operator' },
   ];
 
+  const getPageTitle = () => {
+    const sortedNavItems = [...navItems]
+      .filter(item => item.href !== '#')
+      .sort((a, b) => b.href.length - a.href.length);
+
+    const activeItem = sortedNavItems.find(item => pathname.startsWith(item.href));
+    return activeItem ? activeItem.name : 'Dashboard';
+  };
+
   const handleSignOut = async () => {
     try {
       await signOut();
@@ -49,7 +61,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
       <div className="flex-1 flex flex-col">
         <header className="lg:hidden flex items-center justify-between p-4 border-b bg-white border-gray-200">
-          <Link href="/" className="text-xl font-light text-gray-900">Acarreos App</Link>
+          <Link href="/admin" className="text-xl tracking-wider transition-colors block" style={{ fontFamily: "'Montserrat', sans-serif" }}>
+            <span style={{ color: '#2D3748', fontWeight: 900 }}>Acarreo</span><span style={{ color: '#38A169', fontWeight: 800 }}>.mx</span>
+          </Link>
           <div className="flex items-center space-x-4">
             <Link href="/admin/ticket-reader" className="bg-blue-600 text-white hover:bg-blue-700 px-3 py-2 rounded-sm text-sm font-medium transition-colors">
               Lector
@@ -64,7 +78,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
         <header className="hidden lg:flex items-center justify-between px-6 py-4 border-b bg-white border-gray-200">
           <div className="flex items-center space-x-4">
-            <h1 className="text-lg font-light tracking-wide text-gray-900">PANEL DE ADMINISTRACIÓN</h1>
+            <h1 className="text-lg font-extrabold tracking-wide" style={{ color: '#2D3748' }}>{getPageTitle()}</h1>
           </div>
           <div className="flex items-center space-x-6">
             <span className="text-sm text-gray-600">

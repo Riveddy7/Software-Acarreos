@@ -52,7 +52,6 @@ export default function ReceptionsPage() {
 
   const selectOrder = (order: PurchaseOrder) => {
     setSelectedOrder(order);
-    setExpandedItems(new Set());
     setTruckCode('');
     setTruck(null);
     setSelectedMaterialId('');

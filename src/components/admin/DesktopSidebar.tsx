@@ -28,12 +28,11 @@ export default function DesktopSidebar({ navItems, theme }: DesktopSidebarProps)
   return (
     <aside className={`hidden lg:flex flex-shrink-0 w-64 border-r h-screen flex-col ${isDark ? 'bg-[#313636] border-[#7a7282]/20' : 'bg-white border-gray-200'}`}>
       <div className={`p-6 border-b ${isDark ? 'border-[#7a7282]/20' : 'border-gray-200'}`}>
-        <Link href="/admin" className={`text-xl font-light tracking-wider transition-colors block ${isDark ? 'text-[#f6eef6] hover:text-[#bebfd5]' : 'text-gray-900 hover:text-blue-600'}`}>
-          ACARREOS
+        <Link href="/admin" className={`text-xl tracking-wider transition-colors block`} style={{ fontFamily: "'Montserrat', sans-serif" }}>
+          <span style={{ color: '#2D3748', fontWeight: 900 }}>Acarreo</span><span style={{ color: '#38A169', fontWeight: 800 }}>.mx</span>
         </Link>
-        <p className={`text-xs mt-1 tracking-wide ${isDark ? 'text-[#7a7282]' : 'text-gray-500'}`}>SISTEMA DE GESTIÓN</p>
       </div>
-      <nav className="flex-1 p-4 overflow-y-auto">
+      <nav className="flex-1 p-4 overflow-y-a_uto">
         <ul className="space-y-1">
           {navItems.map((item, index) => (
             <li key={index}>
@@ -46,7 +45,7 @@ export default function DesktopSidebar({ navItems, theme }: DesktopSidebarProps)
                     isActive(item.href)
                       ? isDark
                         ? 'bg-[#7a7282]/20 text-[#f6eef6] border-l-2 border-[#bebfd5]'
-                        : 'bg-blue-50 text-blue-600 border-l-2 border-blue-600'
+                        : 'bg-[#E6F4EA] text-[#38A169] border-l-2 border-[#38A169]'
                       : isDark
                         ? 'text-[#bebfd5] hover:bg-[#7a7282]/10 hover:text-[#f6eef6]'
                         : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
@@ -59,12 +58,7 @@ export default function DesktopSidebar({ navItems, theme }: DesktopSidebarProps)
           ))}
         </ul>
       </nav>
-      <div className={`p-4 border-t ${isDark ? 'border-[#7a7282]/20' : 'border-gray-200'}`}>
-        <div className={`text-xs text-center ${isDark ? 'text-[#7a7282]' : 'text-gray-500'}`}>
-          <p>v2.04</p>
-          <p className="mt-1">IBM Carbon Design</p>
-        </div>
-      </div>
+
     </aside>
   );
 }
