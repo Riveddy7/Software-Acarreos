@@ -17,18 +17,18 @@ const qrCodeOptions = {
   data: '', // This will be set dynamically
   image: '', // Optional: path to an image in the center of the QR code
   dotsOptions: {
-    color: '#4267b2',
+    color: '#2D3748', // Color Carbón del logo
     type: 'rounded'
   },
   backgroundOptions: {
     color: '#ffffff',
   },
   cornersSquareOptions: {
-    color: '#4267b2',
+    color: '#2D3748', // Color Carbón del logo
     type: 'extra-rounded'
   },
   cornersDotOptions: {
-    color: '#4267b2',
+    color: '#2D3748', // Color Carbón del logo
     type: 'dot'
   }
 } as const;

@@ -8,6 +8,11 @@ import { getCollection, addDocument, updateDocument, deleteDocument } from '@/li
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 import Modal from '@/components/ui/Modal';
 import MaterialForm from '@/components/admin/MaterialForm';
+import { Button } from '@/components/ui/Button';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { DataTable } from '@/components/ui/DataTable';
+import { Column } from '@/components/ui/DataTable';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 const MATERIALS_COLLECTION = 'materials';
 
@@ -18,6 +23,10 @@ export default function MaterialsPage() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchMaterials = useCallback(async () => {
     try {
@@ -47,17 +56,39 @@ export default function MaterialsPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este material?')) {
-      try {
-        await deleteDocument(MATERIALS_COLLECTION, id);
-        await fetchMaterials();
-      } catch (e) {
-        console.error(e);
-        alert('Error al eliminar el material.');
-      }
+  const handleDelete = async () => {
+    if (!selectedMaterial) return;
+    
+    try {
+      setDeleting(true);
+      await deleteDocument(MATERIALS_COLLECTION, selectedMaterial.id);
+      await fetchMaterials();
+      setIsDeleteModalOpen(false);
+      setSelectedMaterial(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error al eliminar el material.');
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const openDeleteModal = (material: Material) => {
+    setSelectedMaterial(material);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedMaterial(null);
+  };
+
+  // Filter materials based on search query
+  const filteredMaterials = materials.filter(material =>
+    material.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    material.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    material.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleSave = async (data: Omit<Material, 'id' | 'createdAt'>) => {
     try {
@@ -75,78 +106,117 @@ export default function MaterialsPage() {
     }
   };
 
+  // Define columns for the DataTable
+  const columns: Column<Material>[] = [
+    {
+      key: 'id',
+      label: 'ID del Activo',
+      render: (value) => (
+        <Link href={`/admin/materials/${value}`} className="font-mono text-sm text-green-600 hover:text-green-800">
+          {value}
+        </Link>
+      )
+    },
+    {
+      key: 'name',
+      label: 'Nombre',
+      render: (value) => (
+        <span className="font-medium text-gray-900">{value}</span>
+      )
+    },
+    {
+      key: 'unit',
+      label: 'Unidad'
+    },
+    {
+      key: 'id',
+      label: 'Código QR',
+      render: (value) => (
+        <QrCodeDisplay value={value} />
+      )
+    },
+    {
+      key: 'id' as keyof Material,
+      label: 'Acciones',
+      render: (_, material) => (
+        <div className="flex space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleEdit(material)}
+            className="text-green-600 hover:text-green-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => openDeleteModal(material)}
+            className="text-red-600 hover:text-red-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Gestión de Materiales</h1> {/* Added text color */}
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-500" // Adjusted button styles
-        >
-          + Agregar Nuevo
-        </button>
+    <div className="p-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="md:col-span-3">
+          <SearchInput
+            placeholder="Buscar por nombre, unidad o ID..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
+        <div className="md:col-span-1">
+          <Button onClick={handleAddNew} className="w-full">
+            Nuevo Material
+          </Button>
+        </div>
       </div>
 
-      {isLoading && <p className="text-gray-700">Cargando materiales...</p>} {/* Added text color */}
-      {error && <p className="text-red-600 bg-red-100 p-4 rounded-md border border-red-200">{error}</p>} {/* Adjusted error styles */}
-
-      {!isLoading && !error && (
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200"> {/* Added border */}
-          <table className="w-full table-auto text-left">
-            <thead className="bg-gray-50 border-b border-gray-200"> {/* Added background color to header */}
-              <tr>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">ID del Activo</th> {/* Adjusted text styles */}
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Nombre</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Unidad</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Código QR</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {materials.map((material) => (
-                <tr key={material.id} className="border-b border-gray-100 hover:bg-gray-50">
-                  <td className="py-4 px-4 font-mono text-sm text-blue-600 hover:underline cursor-pointer">
-                    <Link href={`/admin/materials/${material.id}`}>
-                      {material.id}
-                    </Link>
-                  </td> {/* Adjusted text color and made it a link */}
-                  <td className="py-4 px-4 font-medium text-gray-900">{material.name}</td> {/* Adjusted text color and weight */}
-                  <td className="py-4 px-4 text-gray-700">{material.unit}</td> {/* Adjusted text color */}
-                  <td className="py-4 px-4">
-                    <QrCodeDisplay value={material.id} />
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <button 
-                      onClick={() => handleEdit(material)}
-                      className="px-3 py-1 rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors text-sm mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500" // Adjusted button styles
-                    >
-                      Editar
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(material.id)}
-                      className="px-3 py-1 rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500" // Adjusted button styles
-                    >
-                      Borrar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-md border border-red-200">
+          {error}
         </div>
       )}
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <DataTable
+        data={filteredMaterials}
+        columns={columns}
+        loading={isLoading}
+        emptyMessage="No hay materiales que coincidan con la búsqueda"
+      />
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title={editingMaterial ? 'Editar Material' : 'Agregar Nuevo Material'}
       >
-        <MaterialForm 
+        <MaterialForm
           material={editingMaterial}
           onSave={handleSave}
           onCancel={() => setIsModalOpen(false)}
         />
       </Modal>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        title="Eliminar Material"
+        message={`¿Estás seguro de que quieres eliminar el material "${selectedMaterial?.name}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

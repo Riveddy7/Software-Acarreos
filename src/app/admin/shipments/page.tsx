@@ -4,31 +4,44 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Shipment, Truck, Driver, Material, Location } from '@/models/types';
 import { getCollection } from '@/lib/firebase/firestore';
 import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Column } from '@/components/ui/DataTable';
 
 const SHIPMENTS_COLLECTION = 'shipments';
 const TRUCKS_COLLECTION = 'trucks';
 const DRIVERS_COLLECTION = 'drivers';
 const MATERIALS_COLLECTION = 'materials';
 const LOCATIONS_COLLECTION = 'locations';
+const PURCHASE_ORDERS_COLLECTION = 'purchaseOrders';
 
 export default function ShipmentsPage() {
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [activeTab, setActiveTab] = useState<'receptions' | 'shipments'>('receptions');
-
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Fetch all master data
-      const [shipmentsData, trucksData, driversData, materialsData, locationsData] = await Promise.all([
+      // Fetch all master data including purchase orders
+      const [shipmentsData, trucksData, driversData, materialsData, locationsData, purchaseOrdersData] = await Promise.all([
         getCollection<Shipment>(SHIPMENTS_COLLECTION),
         getCollection<Truck>(TRUCKS_COLLECTION),
         getCollection<Driver>(DRIVERS_COLLECTION),
         getCollection<Material>(MATERIALS_COLLECTION),
         getCollection<Location>(LOCATIONS_COLLECTION),
+        getCollection<any>(PURCHASE_ORDERS_COLLECTION),
       ]);
+
+      // Create a map of purchase order numbers to IDs
+      const purchaseOrderMap = new Map();
+      purchaseOrdersData.forEach(po => {
+        purchaseOrderMap.set(po.orderNumber, po.id);
+      });
 
       // Denormalize shipment data for display
       const denormalizedShipments = shipmentsData.map(shipment => {
@@ -55,6 +68,11 @@ export default function ShipmentsPage() {
           materialDisplay = material?.name || 'Desconocido';
         }
 
+        // Find the purchase order ID
+        const purchaseOrderId = shipment.purchaseOrderNumber
+          ? purchaseOrderMap.get(shipment.purchaseOrderNumber)
+          : undefined;
+
         return {
           ...shipment,
           truckPlate: truck?.plate || shipment.truckPlate || 'Desconocido',
@@ -62,7 +80,8 @@ export default function ShipmentsPage() {
           materialName: materialDisplay,
           dispatchLocationName: dispatchLocation?.name || shipment.dispatchLocationName || 'Desconocido',
           deliveryLocationName: deliveryLocation?.name || shipment.deliveryLocationName || 'N/A',
-          weight: totalWeight
+          weight: totalWeight,
+          purchaseOrderId
         };
       });
 
@@ -84,17 +103,188 @@ export default function ShipmentsPage() {
     if (!timestamp) return 'N/A';
     // Firestore Timestamp object has to be converted to JS Date object
     const date = timestamp.toDate();
-    return date.toLocaleString(); // Adjust format as needed
+    return date.toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: '2-digit' }); // Format: DD/MM/YY
+  };
+
+  // Function to get last 3 digits of a string
+  const getLast3Digits = (value: string | undefined) => {
+    if (!value) return 'N/A';
+    return value.length > 3 ? value.slice(-3) : value;
   };
 
   // Filter shipments based on active tab
   const receptions = shipments.filter(s => s.isReception === true);
   const regularShipments = shipments.filter(s => !s.isReception);
   const displayedShipments = activeTab === 'receptions' ? receptions : regularShipments;
+  
+  // Filter shipments based on search query
+  const filteredShipments = displayedShipments.filter(shipment =>
+    shipment.folio?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    shipment.truckPlate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    shipment.driverName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    shipment.materialName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    shipment.dispatchLocationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    shipment.deliveryLocationName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Define columns for the DataTable
+  const getColumns = (): Column<any>[] => {
+    const baseColumns: Column<any>[] = [
+      {
+        key: 'folio',
+        label: 'Folio',
+        render: (value) => (
+          <span className="font-mono text-sm text-gray-700">{getLast3Digits(value)}</span>
+        )
+      },
+      {
+        key: 'materialName',
+        label: 'Material',
+        render: (_, shipment) => (
+          <div>
+            <div className="font-medium text-gray-700">{shipment.materialName}</div>
+            {shipment.materials && shipment.materials.length > 1 && (
+              <details className="mt-1">
+                <summary className="text-xs text-green-600 cursor-pointer">Ver detalles</summary>
+                <div className="mt-2 space-y-1">
+                  {shipment.materials.map((material: any, index: number) => (
+                    <div key={index} className="text-xs text-gray-600">
+                      {material.materialName}: {material.weight} {material.materialUnit}
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        )
+      },
+      {
+        key: activeTab === 'receptions' ? 'supplierName' : 'dispatchLocationName',
+        label: activeTab === 'receptions' ? 'Proveedor' : 'Origen',
+        render: (value, shipment) => (
+          <span className="text-gray-700">
+            {activeTab === 'receptions' ? shipment.supplierName || value : value}
+          </span>
+        )
+      },
+      {
+        key: 'deliveryLocationName',
+        label: 'Destino',
+        render: (value) => (
+          <span className="text-gray-700">{value}</span>
+        )
+      },
+      {
+        key: 'weight',
+        label: 'Peso',
+        render: (value) => (
+          <span className="text-gray-700">{value}</span>
+        )
+      },
+      {
+        key: 'deliveryTimestamp',
+        label: activeTab === 'receptions' ? 'Fecha' : 'Entrega',
+        render: (value) => (
+          <span className="text-sm text-gray-700">{formatDate(value)}</span>
+        )
+      },
+      {
+        key: 'id' as keyof any,
+        label: 'Tickets',
+        render: (_, shipment) => (
+          <div className="flex flex-col space-y-1">
+            {activeTab === 'receptions' ? (
+              <Link
+                href={`/admin/shipments/${shipment.id}/ticket/delivery`}
+                className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href={`/admin/shipments/${shipment.id}/ticket/dispatch`}
+                  className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                </Link>
+                {shipment.status === 'COMPLETADO' && (
+                  <Link
+                    href={`/admin/shipments/${shipment.id}/ticket/delivery`}
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-md bg-green-100 text-green-600 hover:bg-green-200 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                  </Link>
+                )}
+              </>
+            )}
+          </div>
+        )
+      }
+    ];
+
+    // Add tab-specific columns
+    if (activeTab === 'shipments') {
+      baseColumns.splice(2, 0, {
+        key: 'truckPlate',
+        label: 'Camión',
+        render: (value) => (
+          <span className="text-gray-700">{value}</span>
+        )
+      });
+      
+      baseColumns.splice(3, 0, {
+        key: 'driverName',
+        label: 'Chofer',
+        render: (value) => (
+          <span className="text-gray-700">{value}</span>
+        )
+      });
+    } else {
+      baseColumns.splice(2, 0, {
+        key: 'purchaseOrderNumber',
+        label: 'Pedido',
+        render: (value, shipment) => (
+          value && shipment.purchaseOrderId ? (
+            <Link
+              href={`/admin/purchase-orders/${shipment.purchaseOrderId}`}
+              className="text-green-600 hover:text-green-800 text-sm font-mono"
+            >
+              {getLast3Digits(value)}
+            </Link>
+          ) : (
+            <span className="text-gray-700">N/A</span>
+          )
+        )
+      });
+    }
+
+    return baseColumns;
+  };
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold text-gray-800 mb-6">Listado de Acarreos y Recepciones</h1>
+    <div className="p-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="md:col-span-3">
+          <SearchInput
+            placeholder="Buscar por folio, camión, chofer, material..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
+        <div className="md:col-span-1">
+          {/* Shipments no tienen botón de creación, se generan automáticamente */}
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="mb-6 border-b border-gray-200">
@@ -103,7 +293,7 @@ export default function ShipmentsPage() {
             onClick={() => setActiveTab('receptions')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'receptions'
-                ? 'border-blue-500 text-blue-600'
+                ? 'border-[#38A169] text-[#38A169]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -113,7 +303,7 @@ export default function ShipmentsPage() {
             onClick={() => setActiveTab('shipments')}
             className={`py-4 px-1 border-b-2 font-medium text-sm ${
               activeTab === 'shipments'
-                ? 'border-blue-500 text-blue-600'
+                ? 'border-[#38A169] text-[#38A169]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -122,118 +312,18 @@ export default function ShipmentsPage() {
         </nav>
       </div>
 
-      {isLoading && <p className="text-gray-700">Cargando datos...</p>}
-      {error && <p className="text-red-600 bg-red-100 p-4 rounded-md border border-red-200">{error}</p>}
-
-      {!isLoading && !error && (
-        <div className="bg-white p-6 rounded-lg shadow-md overflow-x-auto border border-gray-200">
-          {displayedShipments.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
-              No hay {activeTab === 'receptions' ? 'recepciones' : 'acarreos'} registrados
-            </p>
-          ) : (
-            <table className="w-full table-auto text-left min-w-[1000px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Folio</th>
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
-                  {activeTab === 'shipments' && (
-                    <>
-                      <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Camión</th>
-                      <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Chofer</th>
-                    </>
-                  )}
-                  {activeTab === 'receptions' && (
-                    <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Orden de Compra</th>
-                  )}
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Material</th>
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
-                    {activeTab === 'receptions' ? 'Proveedor' : 'Origen'}
-                  </th>
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Destino</th>
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Peso</th>
-                  {activeTab === 'shipments' && (
-                    <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Despacho</th>
-                  )}
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">
-                    {activeTab === 'receptions' ? 'Fecha Recepción' : 'Entrega'}
-                  </th>
-                  <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center">Tickets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayedShipments.map((shipment) => (
-                  <tr key={shipment.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-4 px-4 font-mono text-sm text-gray-700">{shipment.folio}</td>
-                    <td className="py-4 px-4">
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${shipment.status === 'COMPLETADO' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}`}>
-                        {shipment.status}
-                      </span>
-                    </td>
-                    {activeTab === 'shipments' && (
-                      <>
-                        <td className="py-4 px-4 text-gray-700">{shipment.truckPlate}</td>
-                        <td className="py-4 px-4 text-gray-700">{shipment.driverName}</td>
-                      </>
-                    )}
-                    {activeTab === 'receptions' && (
-                      <td className="py-4 px-4 text-gray-700">
-                        {shipment.purchaseOrderNumber || 'N/A'}
-                      </td>
-                    )}
-                    <td className="py-4 px-4 text-gray-700">
-                      {shipment.materials && shipment.materials.length > 1 ? (
-                        <div>
-                          <div className="font-medium">{shipment.materialName}</div>
-                          <details className="mt-1">
-                            <summary className="text-xs text-blue-600 cursor-pointer">Ver detalles</summary>
-                            <div className="mt-2 space-y-1">
-                              {shipment.materials.map((material, index) => (
-                                <div key={index} className="text-xs text-gray-600">
-                                  {material.materialName}: {material.weight} {material.materialUnit}
-                                </div>
-                              ))}
-                            </div>
-                          </details>
-                        </div>
-                      ) : (
-                        shipment.materialName
-                      )}
-                    </td>
-                    <td className="py-4 px-4 text-gray-700">
-                      {activeTab === 'receptions' ? shipment.supplierName || shipment.dispatchLocationName : shipment.dispatchLocationName}
-                    </td>
-                    <td className="py-4 px-4 text-gray-700">{shipment.deliveryLocationName}</td>
-                    <td className="py-4 px-4 text-gray-700">{shipment.weight}</td>
-                    {activeTab === 'shipments' && (
-                      <td className="py-4 px-4 text-sm text-gray-700">{formatDate(shipment.dispatchTimestamp)}</td>
-                    )}
-                    <td className="py-4 px-4 text-sm text-gray-700">{formatDate(shipment.deliveryTimestamp)}</td>
-                    <td className="py-4 px-4 text-center">
-                      {activeTab === 'receptions' ? (
-                        <Link href={`/admin/shipments/${shipment.id}/ticket/delivery`} className="text-blue-600 hover:underline text-sm">
-                          Ver Ticket
-                        </Link>
-                      ) : (
-                        <>
-                          <Link href={`/admin/shipments/${shipment.id}/ticket/dispatch`} className="text-blue-600 hover:underline text-sm mr-2">
-                            Despacho
-                          </Link>
-                          {shipment.status === 'COMPLETADO' && (
-                            <Link href={`/admin/shipments/${shipment.id}/ticket/delivery`} className="text-blue-600 hover:underline text-sm">
-                              Entrega
-                            </Link>
-                          )}
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-md border border-red-200">
+          {error}
         </div>
       )}
+
+      <DataTable
+        data={filteredShipments}
+        columns={getColumns()}
+        loading={isLoading}
+        emptyMessage={`No hay ${activeTab === 'receptions' ? 'recepciones' : 'acarreos'} que coincidan con la búsqueda`}
+      />
     </div>
   );
 }

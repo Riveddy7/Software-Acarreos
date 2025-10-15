@@ -6,6 +6,8 @@ import { getDocument, updateDocument } from '@/lib/firebase/firestore';
 import { PurchaseOrder, PurchaseOrderItem } from '@/models/types';
 import { PURCHASE_ORDERS_COLLECTION } from '@/lib/firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
+import { Button } from '@/components/ui/Button';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
 export default function PurchaseOrderPage() {
   const { id } = useParams();
@@ -80,14 +82,6 @@ export default function PurchaseOrderPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDING': return 'bg-yellow-100 text-yellow-800';
-      case 'PARTIAL': return 'bg-blue-100 text-blue-800';
-      case 'COMPLETED': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   if (loading) {
     return <div>Cargando...</div>;
@@ -99,16 +93,40 @@ export default function PurchaseOrderPage() {
 
   return (
     <div className="p-4 md:p-6">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-6">
-        <div className="flex justify-between items-start mb-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-gray-800">{order.orderNumber}</h1>
+            <h2 className="text-xl font-semibold text-gray-900">Orden {order.orderNumber}</h2>
             <p className="text-sm text-gray-500">
               Fecha: {order.orderDate instanceof Timestamp ? order.orderDate.toDate().toLocaleDateString() : 'Fecha inválida'}
             </p>
           </div>
-          <div className={`px-3 py-1 rounded-full text-sm font-semibold ${getStatusColor(order.status)}`}>
-            {order.status}
+          <div className="flex items-center space-x-3 mt-4 md:mt-0">
+            <StatusBadge status={order.status as any} />
+            {!isEditing ? (
+              <Button
+                onClick={() => setIsEditing(true)}
+              >
+                Editar Cantidades
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSaveChanges}
+                >
+                  Guardar Cambios
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditedItems(JSON.parse(JSON.stringify(order.items))); // Revert changes
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -127,81 +145,54 @@ export default function PurchaseOrderPage() {
           </div>
         </div>
 
-        <div className="flex justify-end mb-4">
-          {!isEditing ? (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-            >
-              Editar Cantidades
-            </button>
-          ) : (
-            <div className="flex gap-2">
-              <button
-                onClick={handleSaveChanges}
-                className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600"
-              >
-                Guardar Cambios
-              </button>
-              <button
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditedItems(JSON.parse(JSON.stringify(order.items))); // Revert changes
-                }}
-                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-gray-500">
-            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-              <tr>
-                <th scope="col" className="px-6 py-3">Material</th>
-                <th scope="col" className="px-6 py-3 text-right">Ordenado</th>
-                <th scope="col" className="px-6 py-3 text-right">Recibido</th>
-                <th scope="col" className="px-6 py-3 text-right">Pendiente</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isEditing ? (
-                editedItems.map((item, index) => (
-                  <tr key={item.materialId} className="bg-white border-b">
-                    <td className="px-6 py-4 font-medium text-gray-900">{item.materialName}</td>
-                    <td className="px-6 py-4 text-right">
-                      <input
-                        type="number"
-                        value={item.orderedQuantity}
-                        onChange={(e) => handleItemChange(index, 'orderedQuantity', e.target.value)}
-                        className="w-24 text-right bg-gray-100 rounded-md border-gray-300"
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <input
-                        type="number"
-                        value={item.receivedQuantity}
-                        onChange={(e) => handleItemChange(index, 'receivedQuantity', e.target.value)}
-                        className="w-24 text-right bg-gray-100 rounded-md border-gray-300"
-                      />
-                    </td>
-                    <td className="px-6 py-4 text-right font-medium">{item.pendingQuantity}</td>
-                  </tr>
-                ))
-              ) : (
-                order.items.map(item => (
-                  <tr key={item.materialId} className="bg-white border-b">
-                    <td className="px-6 py-4 font-medium text-gray-900">{item.materialName}</td>
-                    <td className="px-6 py-4 text-right">{item.orderedQuantity}</td>
-                    <td className="px-6 py-4 text-right">{item.receivedQuantity}</td>
-                    <td className="px-6 py-4 text-right font-medium text-yellow-600">{item.pendingQuantity}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="bg-white shadow rounded-lg overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left text-gray-500">
+              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Material</th>
+                  <th scope="col" className="px-6 py-3 text-right">Ordenado</th>
+                  <th scope="col" className="px-6 py-3 text-right">Recibido</th>
+                  <th scope="col" className="px-6 py-3 text-right">Pendiente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isEditing ? (
+                  editedItems.map((item, index) => (
+                    <tr key={item.materialId} className="bg-white border-b">
+                      <td className="px-6 py-4 font-medium text-gray-900">{item.materialName}</td>
+                      <td className="px-6 py-4 text-right">
+                        <input
+                          type="number"
+                          value={item.orderedQuantity}
+                          onChange={(e) => handleItemChange(index, 'orderedQuantity', e.target.value)}
+                          className="w-24 text-right bg-gray-100 rounded-md border-gray-300 focus:border-[#38A169] focus:ring-[#38A169]"
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <input
+                          type="number"
+                          value={item.receivedQuantity}
+                          onChange={(e) => handleItemChange(index, 'receivedQuantity', e.target.value)}
+                          className="w-24 text-right bg-gray-100 rounded-md border-gray-300 focus:border-[#38A169] focus:ring-[#38A169]"
+                        />
+                      </td>
+                      <td className="px-6 py-4 text-right font-medium">{item.pendingQuantity}</td>
+                    </tr>
+                  ))
+                ) : (
+                  order.items.map(item => (
+                    <tr key={item.materialId} className="bg-white border-b">
+                      <td className="px-6 py-4 font-medium text-gray-900">{item.materialName}</td>
+                      <td className="px-6 py-4 text-right">{item.orderedQuantity}</td>
+                      <td className="px-6 py-4 text-right">{item.receivedQuantity}</td>
+                      <td className="px-6 py-4 text-right font-medium text-yellow-600">{item.pendingQuantity}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

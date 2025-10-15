@@ -7,6 +7,7 @@ import { getCollection, addDocument } from '@/lib/firebase/firestore';
 import { Supplier, Material, Location, PurchaseOrder, PurchaseOrderItem } from '@/models/types';
 import { SUPPLIERS_COLLECTION, MATERIALS_COLLECTION, LOCATIONS_COLLECTION, PURCHASE_ORDERS_COLLECTION } from '@/lib/firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
+import { Button } from '@/components/ui/Button';
 
 interface OrderItem {
   materialId: string;
@@ -179,14 +180,14 @@ export default function NewPurchaseOrderPage() {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Nueva Orden de Compra</h1>
-        <button
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Nueva Orden de Compra</h2>
+        <Button
+          variant="ghost"
           onClick={() => router.push('/admin/purchase-orders')}
-          className="text-gray-600 hover:text-gray-900"
         >
           ← Volver a Órdenes
-        </button>
+        </Button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -205,7 +206,7 @@ export default function NewPurchaseOrderPage() {
                 required
                 value={formData.supplierId}
                 onChange={handleSupplierChange}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
               >
                 <option value="">Selecciona un proveedor</option>
                 {suppliers.map(supplier => (
@@ -257,7 +258,7 @@ export default function NewPurchaseOrderPage() {
                 id="materialId"
                 value={newItem.materialId}
                 onChange={(e) => setNewItem(prev => ({ ...prev, materialId: e.target.value }))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
               >
                 <option value="">Selecciona un material</option>
                 {materials.map(material => (
@@ -279,19 +280,19 @@ export default function NewPurchaseOrderPage() {
                 step="0.01"
                 value={newItem.quantity || ''}
                 onChange={(e) => setNewItem(prev => ({ ...prev, quantity: parseFloat(e.target.value) || 0 }))}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
               />
             </div>
 
             <div className="flex items-end">
-              <button
+              <Button
                 type="button"
                 onClick={addItem}
                 disabled={!newItem.materialId || newItem.quantity <= 0}
-                className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full"
               >
                 Agregar
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -313,15 +314,17 @@ export default function NewPurchaseOrderPage() {
                         step="0.01"
                         value={item.quantity}
                         onChange={(e) => updateItemQuantity(item.materialId, parseFloat(e.target.value) || 0)}
-                        className="w-24 px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-24 px-2 py-1 border border-gray-300 rounded text-sm focus:border-[#38A169] focus:ring-[#38A169]"
                       />
-                      <button
+                      <Button
                         type="button"
+                        size="sm"
+                        variant="ghost"
                         onClick={() => removeItem(item.materialId)}
                         className="text-red-600 hover:text-red-800"
                       >
                         Eliminar
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -332,20 +335,20 @@ export default function NewPurchaseOrderPage() {
 
         {/* Submit */}
         <div className="flex justify-end space-x-3">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => router.push('/admin/purchase-orders')}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
           >
             Cancelar
-          </button>
-          <button
+          </Button>
+          <Button
             type="submit"
-            disabled={submitting || orderItems.length === 0}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={submitting}
+            disabled={orderItems.length === 0}
           >
-            {submitting ? 'Creando...' : 'Crear Orden de Compra'}
-          </button>
+            Crear Orden de Compra
+          </Button>
         </div>
       </form>
     </div>

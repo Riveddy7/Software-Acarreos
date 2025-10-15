@@ -8,6 +8,12 @@ import { getCollection, addDocument, updateDocument, deleteDocument } from '@/li
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 import Modal from '@/components/ui/Modal';
 import TruckForm from '@/components/admin/TruckForm';
+import { Button } from '@/components/ui/Button';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Column } from '@/components/ui/DataTable';
 
 const TRUCKS_COLLECTION = 'trucks';
 
@@ -18,6 +24,10 @@ export default function TrucksPage() {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTruck, setEditingTruck] = useState<Truck | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedTruck, setSelectedTruck] = useState<Truck | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchTrucks = useCallback(async () => {
     try {
@@ -47,17 +57,39 @@ export default function TrucksPage() {
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este camión?')) {
-      try {
-        await deleteDocument(TRUCKS_COLLECTION, id);
-        await fetchTrucks(); // Refetch data
-      } catch (e) {
-        console.error(e);
-        alert('Error al eliminar el camión.');
-      }
+  const handleDelete = async () => {
+    if (!selectedTruck) return;
+    
+    try {
+      setDeleting(true);
+      await deleteDocument(TRUCKS_COLLECTION, selectedTruck.id);
+      await fetchTrucks(); // Refetch data
+      setIsDeleteModalOpen(false);
+      setSelectedTruck(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error al eliminar el camión.');
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const openDeleteModal = (truck: Truck) => {
+    setSelectedTruck(truck);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedTruck(null);
+  };
+
+  // Filter trucks based on search query
+  const filteredTrucks = trucks.filter(truck =>
+    truck.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    truck.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    truck.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleSave = async (truckData: Omit<Truck, 'id' | 'createdAt'>) => {
     try {
@@ -75,86 +107,131 @@ export default function TrucksPage() {
     }
   };
 
+  // Define columns for the DataTable
+  const columns: Column<Truck>[] = [
+    {
+      key: 'id',
+      label: 'ID del Activo',
+      render: (value) => (
+        <Link href={`/admin/trucks/${value}`} className="font-mono text-sm text-green-600 hover:text-green-800 hover:underline">
+          {value}
+        </Link>
+      )
+    },
+    {
+      key: 'plate',
+      label: 'Placa',
+      render: (value) => (
+        <span className="font-medium text-gray-900">{value}</span>
+      )
+    },
+    {
+      key: 'model',
+      label: 'Modelo'
+    },
+    {
+      key: 'volume',
+      label: 'Volumen (M³)',
+      render: (value) => value || 'N/A'
+    },
+    {
+      key: 'status',
+      label: 'Estado',
+      render: (value) => (
+        <StatusBadge
+          status={value === 'IN_SHIPMENT' ? 'EN_TRANSITO' : 'COMPLETED'}
+        />
+      )
+    },
+    {
+      key: 'id',
+      label: 'Código QR',
+      render: (value) => (
+        <QrCodeDisplay value={value} />
+      )
+    },
+    {
+      key: 'id' as keyof Truck,
+      label: 'Acciones',
+      render: (_, truck) => (
+        <div className="flex space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleEdit(truck)}
+            className="text-green-600 hover:text-green-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => openDeleteModal(truck)}
+            className="text-red-600 hover:text-red-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </Button>
+        </div>
+      )
+    }
+  ];
+
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-800">Gestión de Camiones</h1> {/* Added text color */}
-        <button
-          onClick={handleAddNew}
-          className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-500" // Adjusted button styles
-        >
-          + Agregar Nuevo
-        </button>
+    <div className="p-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="md:col-span-3">
+          <SearchInput
+            placeholder="Buscar por placa, modelo o ID..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
+        <div className="md:col-span-1">
+          <Button onClick={handleAddNew} className="w-full">
+            Nuevo Camión
+          </Button>
+        </div>
       </div>
 
-      {isLoading && <p className="text-gray-700">Cargando camiones...</p>} {/* Added text color */}
-      {error && <p className="text-red-600 bg-red-100 p-4 rounded-md border border-red-200">{error}</p>} {/* Adjusted error styles */}
-
-      {!isLoading && !error && (
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200"> {/* Added border */}
-          <table className="w-full table-auto text-left">
-            <thead className="bg-gray-50 border-b border-gray-200"> {/* Added background color to header */}
-              <tr>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">ID del Activo</th> {/* Adjusted text styles */}
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Placa</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Modelo</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Volumen (M³)</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Estado</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider">Código QR</th>
-                <th className="py-3 px-4 text-sm font-semibold text-gray-600 uppercase tracking-wider text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trucks.map((truck) => (
-                <tr key={truck.id} className="border-b border-gray-100 hover:bg-gray-50"> 
-                  <td className="py-4 px-4 font-mono text-sm text-blue-600 hover:underline cursor-pointer">
-                    <Link href={`/admin/trucks/${truck.id}`}>
-                      {truck.id}
-                    </Link>
-                  </td> {/* Adjusted text color and made it a link */}
-                  <td className="py-4 px-4 font-medium text-gray-900">{truck.plate}</td> {/* Adjusted text color and weight */}
-                  <td className="py-4 px-4 text-gray-700">{truck.model}</td> {/* Adjusted text color */}
-                  <td className="py-4 px-4 text-gray-700 font-medium">{truck.volume || 'N/A'}</td> {/* Volume column */}
-                  <td className="py-4 px-4">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${truck.status === 'IN_SHIPMENT' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
-                      {truck.status === 'IN_SHIPMENT' ? 'En Acarreo' : 'Disponible'}
-                    </span>
-                  </td>
-                  <td className="py-4 px-4">
-                    <QrCodeDisplay value={truck.id} />
-                  </td>
-                  <td className="py-4 px-4 text-center">
-                    <button 
-                      onClick={() => handleEdit(truck)}
-                      className="px-3 py-1 rounded-md text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors text-sm mr-2 focus:outline-none focus:ring-2 focus:ring-blue-500" // Adjusted button styles
-                    >
-                      Editar
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(truck.id)}
-                      className="px-3 py-1 rounded-md text-red-700 bg-red-100 hover:bg-red-200 transition-colors text-sm focus:outline-none focus:ring-2 focus:ring-red-500" // Adjusted button styles
-                    >
-                      Borrar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-md border border-red-200">
+          {error}
         </div>
       )}
 
-      <Modal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
+      <DataTable
+        data={filteredTrucks}
+        columns={columns}
+        loading={isLoading}
+        emptyMessage="No hay camiones que coincidan con la búsqueda"
+      />
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
         title={editingTruck ? 'Editar Camión' : 'Agregar Nuevo Camión'}
       >
-        <TruckForm 
+        <TruckForm
           truck={editingTruck}
           onSave={handleSave}
           onCancel={() => setIsModalOpen(false)}
         />
       </Modal>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        title="Eliminar Camión"
+        message={`¿Estás seguro de que quieres eliminar el camión con placa "${selectedTruck?.plate}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

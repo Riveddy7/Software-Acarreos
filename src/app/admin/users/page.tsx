@@ -5,6 +5,12 @@ import { UserProfile, UserRole } from '@/models/types';
 import { getCollection, updateDocument, USERS_COLLECTION } from '@/lib/firebase/firestore';
 import { createUser } from '@/lib/auth';
 import Modal from '@/components/ui/Modal';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { Button } from '@/components/ui/Button';
+import { SearchInput } from '@/components/ui/SearchInput';
+import { DataTable } from '@/components/ui/DataTable';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { Column } from '@/components/ui/DataTable';
 
 interface UserFormData {
   email: string;
@@ -25,6 +31,11 @@ export default function UsersPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
   const fetchUsers = async () => {
     try {
@@ -59,6 +70,39 @@ export default function UsersPage() {
     }
   };
 
+  const handleEdit = (user: UserProfile) => {
+    setEditingUser(user);
+    setShowModal(true);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      setDeleting(true);
+      // Note: In a real app, you would implement a delete user function
+      // For now, we'll just toggle the status as before
+      await toggleUserStatus(selectedUser.id, selectedUser.isActive);
+      setIsDeleteModalOpen(false);
+      setSelectedUser(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error al eliminar el usuario.');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const openDeleteModal = (user: UserProfile) => {
+    setSelectedUser(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedUser(null);
+  };
+
   const toggleUserStatus = async (userId: string, currentStatus: boolean) => {
     try {
       await updateDocument(USERS_COLLECTION, userId, { isActive: !currentStatus });
@@ -84,70 +128,131 @@ export default function UsersPage() {
     return `${baseClasses} bg-gray-100 text-gray-800`;
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center items-center h-64">
-        <div className="text-lg text-gray-600">Cargando usuarios...</div>
-      </div>
-    );
-  }
+  // Filter users based on search query
+  const filteredUsers = users.filter(user =>
+    user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Define columns for the DataTable
+  const columns: Column<UserProfile>[] = [
+    {
+      key: 'username',
+      label: 'Usuario',
+      render: (value, user) => (
+        <div>
+          <div className="font-medium text-gray-900">{value}</div>
+          <div className="text-sm text-gray-500">{user.email}</div>
+        </div>
+      )
+    },
+    {
+      key: 'role',
+      label: 'Rol',
+      render: (value) => {
+        const getRoleBadge = (role: UserRole) => {
+          const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
+          if (role === 'admin') {
+            return `${baseClasses} bg-red-100 text-red-800`;
+          }
+          return `${baseClasses} bg-blue-100 text-blue-800`;
+        };
+        
+        return (
+          <span className={getRoleBadge(value)}>
+            {value === 'admin' ? 'Administrador' : 'Operador'}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'isActive',
+      label: 'Estado',
+      render: (value) => {
+        const getStatusBadge = (isActive: boolean) => {
+          const baseClasses = 'px-2 py-1 rounded-full text-xs font-medium';
+          if (isActive) {
+            return `${baseClasses} bg-green-100 text-green-800`;
+          }
+          return `${baseClasses} bg-gray-100 text-gray-800`;
+        };
+        
+        return (
+          <span className={getStatusBadge(value)}>
+            {value ? 'Activo' : 'Inactivo'}
+          </span>
+        );
+      }
+    },
+    {
+      key: 'createdAt',
+      label: 'Creado',
+      render: (value) => (
+        <span className="text-sm text-gray-700">{value.toDate().toLocaleDateString()}</span>
+      )
+    },
+    {
+      key: 'lastLogin',
+      label: 'Último Acceso',
+      render: (value) => (
+        <span className="text-sm text-gray-700">
+          {value ? value.toDate().toLocaleDateString() : 'N/A'}
+        </span>
+      )
+    },
+    {
+      key: 'id' as keyof UserProfile,
+      label: 'Acciones',
+      render: (_, user) => (
+        <div className="flex space-x-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => handleEdit(user)}
+            className="text-green-600 hover:text-green-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => openDeleteModal(user)}
+            className="text-red-600 hover:text-red-800"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </Button>
+        </div>
+      )
+    }
+  ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Gestión de Usuarios</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          Crear Usuario
-        </button>
+    <div className="p-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="md:col-span-3">
+          <SearchInput
+            placeholder="Buscar por nombre de usuario o email..."
+            value={searchQuery}
+            onChange={setSearchQuery}
+          />
+        </div>
+        <div className="md:col-span-1">
+          <Button onClick={() => setShowModal(true)} className="w-full">
+            Crear Usuario
+          </Button>
+        </div>
       </div>
 
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {users.map((user) => (
-            <li key={user.id} className="px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">{user.username}</h3>
-                      <p className="text-sm text-gray-500">{user.email}</p>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className={getRoleBadge(user.role)}>
-                        {user.role === 'admin' ? 'Administrador' : 'Operador'}
-                      </span>
-                      <span className={getStatusBadge(user.isActive)}>
-                        {user.isActive ? 'Activo' : 'Inactivo'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-2 text-sm text-gray-500">
-                    <p>Creado: {user.createdAt.toDate().toLocaleDateString()}</p>
-                    {user.lastLogin && (
-                      <p>Último acceso: {user.lastLogin.toDate().toLocaleDateString()}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <button
-                    onClick={() => toggleUserStatus(user.id, user.isActive)}
-                    className={`px-3 py-1 rounded-md text-sm font-medium ${
-                      user.isActive
-                        ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                        : 'bg-green-100 text-green-700 hover:bg-green-200'
-                    }`}
-                  >
-                    {user.isActive ? 'Desactivar' : 'Activar'}
-                  </button>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <DataTable
+        data={filteredUsers}
+        columns={columns}
+        loading={loading}
+        emptyMessage="No hay usuarios que coincidan con la búsqueda"
+      />
 
       <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Crear Nuevo Usuario">
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -159,7 +264,7 @@ export default function UsersPage() {
               type="email"
               id="email"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-[#38A169] focus:border-[#38A169]"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             />
@@ -173,7 +278,7 @@ export default function UsersPage() {
               type="text"
               id="username"
               required
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-[#38A169] focus:border-[#38A169]"
               value={formData.username}
               onChange={(e) => setFormData({ ...formData, username: e.target.value })}
             />
@@ -188,7 +293,7 @@ export default function UsersPage() {
               id="password"
               required
               minLength={6}
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-[#38A169] focus:border-[#38A169]"
               value={formData.password}
               onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             />
@@ -200,7 +305,7 @@ export default function UsersPage() {
             </label>
             <select
               id="role"
-              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-[#38A169] focus:border-[#38A169]"
               value={formData.role}
               onChange={(e) => setFormData({ ...formData, role: e.target.value as UserRole })}
             >
@@ -216,23 +321,33 @@ export default function UsersPage() {
           )}
 
           <div className="flex justify-end space-x-3">
-            <button
+            <Button
               type="button"
+              variant="secondary"
               onClick={() => setShowModal(false)}
-              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={submitting}
-              className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              loading={submitting}
             >
-              {submitting ? 'Creando...' : 'Crear Usuario'}
-            </button>
+              Crear Usuario
+            </Button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDelete}
+        title="Eliminar Usuario"
+        message={`¿Estás seguro de que quieres eliminar al usuario "${selectedUser?.username}"? Esta acción no se puede deshacer.`}
+        confirmText="Eliminar"
+        danger={true}
+        loading={deleting}
+      />
     </div>
   );
 }

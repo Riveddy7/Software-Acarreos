@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Supplier } from '@/models/types';
+import { Button } from '@/components/ui/Button';
 
 interface SupplierFormProps {
   supplier?: Supplier | null;
@@ -60,7 +61,7 @@ export default function SupplierForm({ supplier, onSubmit, onCancel }: SupplierF
           required
           value={formData.name}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
           placeholder="Nombre del proveedor"
         />
       </div>
@@ -75,7 +76,7 @@ export default function SupplierForm({ supplier, onSubmit, onCancel }: SupplierF
           name="contact"
           value={formData.contact}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
           placeholder="Nombre del contacto"
         />
       </div>
@@ -90,7 +91,7 @@ export default function SupplierForm({ supplier, onSubmit, onCancel }: SupplierF
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
           placeholder="Número de teléfono"
         />
       </div>
@@ -105,7 +106,7 @@ export default function SupplierForm({ supplier, onSubmit, onCancel }: SupplierF
           name="email"
           value={formData.email}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
           placeholder="correo@ejemplo.com"
         />
       </div>
@@ -120,25 +121,24 @@ export default function SupplierForm({ supplier, onSubmit, onCancel }: SupplierF
           rows={3}
           value={formData.address}
           onChange={handleChange}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border px-3 py-2"
+          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[#38A169] focus:ring-[#38A169] sm:text-sm border px-3 py-2"
           placeholder="Dirección completa del proveedor"
         />
       </div>
 
       <div className="flex justify-end space-x-3 pt-4">
-        <button
+        <Button
           type="button"
+          variant="secondary"
           onClick={onCancel}
-          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           Cancelar
-        </button>
-        <button
+        </Button>
+        <Button
           type="submit"
-          className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           {supplier ? 'Actualizar' : 'Crear'} Proveedor
-        </button>
+        </Button>
       </div>
     </form>
   );
