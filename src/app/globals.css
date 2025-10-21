@@ -1,6 +1,5 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&display=swap');
 
 :root {
   --background: #ffffff;
@@ -25,4 +24,60 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Botones mobile para operador */
+.btn-mobile {
+  @apply min-h-[56px] py-4 px-6 rounded-lg font-semibold text-lg flex items-center justify-center transition-all duration-200 bg-white border-2 active:scale-[0.98];
+}
+
+.btn-reception {
+  @apply border-purple-500 text-purple-500 hover:bg-purple-50 hover:border-purple-600 hover:text-purple-600;
+}
+
+.btn-dispatch {
+  @apply border-green-500 text-green-500 hover:bg-green-50 hover:border-green-600 hover:text-green-600;
+}
+
+.btn-delivery {
+  @apply border-blue-500 text-blue-500 hover:bg-blue-50 hover:border-blue-600 hover:text-blue-600;
+}
+
+.btn-purple-500 {
+  @apply border-purple-500 text-purple-500 hover:bg-purple-50 hover:border-purple-600 hover:text-purple-600;
+}
+
+.btn-green-500 {
+  @apply border-green-500 text-green-500 hover:bg-green-50 hover:border-green-600 hover:text-green-600;
+}
+
+/* Contenedor móvil estándar */
+.container-mobile {
+  @apply w-full max-w-[428px] mx-auto px-4;
+}
+
+/* Tarjeta móvil estándar */
+.card-mobile {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
+}
+
+/* Animaciones */
+@keyframes slideUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Safe area para navegación inferior */
+.safe-area-mobile {
+  padding-bottom: env(safe-area-inset-bottom);
 }

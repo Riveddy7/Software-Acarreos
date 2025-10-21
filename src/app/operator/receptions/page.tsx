@@ -331,19 +331,23 @@ export default function ReceptionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
       {!selectedOrder ? (
-        // Order selection - Mobile optimized
-        <div className="p-4">
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Recepciones</h1>
-            <div className="bg-blue-100 text-blue-800 px-3 py-2 rounded-lg text-sm">
-              📍 {userProfile.currentLocationName}
+        // Order selection - Exact same structure as main page
+        <div className="container-mobile mx-auto py-6">
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2" style={{ fontFamily: 'Montserrat, sans-serif' }}>Recepciones</h1>
+            <div className="flex items-center text-gray-600 text-sm">
+              <svg className="w-4 h-4 mr-1 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span>{userProfile?.currentLocationName}</span>
             </div>
           </div>
 
           {pendingOrders.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="text-center py-8">
               <div className="text-gray-500 text-lg mb-2">No hay órdenes pendientes</div>
               <div className="text-gray-400 text-sm">en esta ubicación</div>
             </div>
@@ -352,7 +356,7 @@ export default function ReceptionsPage() {
               {pendingOrders.map((order) => (
                 <div
                   key={order.id}
-                  className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 active:bg-gray-50"
+                  className="card-mobile cursor-pointer hover:shadow-md transition-all duration-200 active:scale-[0.99] w-full"
                   onClick={() => selectOrder(order)}
                 >
                   <div className="flex justify-between items-start mb-3">
@@ -360,30 +364,34 @@ export default function ReceptionsPage() {
                       <h3 className="font-semibold text-lg text-gray-900">{order.orderNumber}</h3>
                       <p className="text-gray-600 text-sm">{order.supplierName}</p>
                     </div>
-                    <div className={`px-3 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(order.status)}`}>
+                    <div className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(order.status)}`}>
                       {getStatusText(order.status)}
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                    <div>
-                      <span className="text-gray-500">Productos:</span>
-                      <div className="font-medium">{order.items.length}</div>
-                    </div>
-                    <div>
-                      <span className="text-gray-500">Pendientes:</span>
-                      <div className="font-medium text-yellow-600">
-                        {order.items.filter(item => item.pendingQuantity > 0).length}
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-center">
+                        <span className="text-gray-500 text-xs block">Productos</span>
+                        <div className="font-semibold">{order.items.length}</div>
+                      </div>
+                      <div className="text-center">
+                        <span className="text-gray-500 text-xs block">Pendientes</span>
+                        <div className="font-semibold text-yellow-600">
+                          {order.items.filter(item => item.pendingQuantity > 0).length}
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="text-xs text-gray-500">
-                      {order.orderDate.toDate().toLocaleDateString()}
-                    </div>
-                    <div className="text-blue-600 font-medium text-sm">
-                      Seleccionar →
+                    
+                    <div className="flex items-center space-x-2">
+                      <div className="text-xs text-gray-500">
+                        {order.orderDate.toDate().toLocaleDateString()}
+                      </div>
+                      <button className="text-green-600 font-semibold flex items-center">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -392,41 +400,51 @@ export default function ReceptionsPage() {
           )}
         </div>
       ) : (
-        // Reception form - Mobile optimized
-        <div className="flex flex-col h-screen">
-          {/* Fixed header */}
-          <div className="bg-white shadow-sm border-b border-gray-200 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <button
-                onClick={() => {
-                  setSelectedOrder(null);
-                  setTruck(null);
-                  setTruckCode('');
-                  setSelectedMaterialId('');
-                }}
-                className="text-blue-600 font-medium text-sm"
-              >
-                ← Volver
-              </button>
-              <div className="text-xs text-gray-500">
-                {selectedOrder.orderDate.toDate().toLocaleDateString()}
+        // Reception form - Same structure as main page
+        <div className="container-mobile mx-auto py-6">
+          {/* Header - Only show when not in step 2 or 3 */}
+          {(!truck || (truck && selectedMaterialId)) && (
+            <div className="card-mobile mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  onClick={() => {
+                    setSelectedOrder(null);
+                    setTruck(null);
+                    setTruckCode('');
+                    setSelectedMaterialId('');
+                  }}
+                  className="flex items-center text-green-600 font-semibold"
+                >
+                  <svg className="w-5 h-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Volver
+                </button>
+                <div className="text-sm text-gray-500">
+                  {selectedOrder?.orderDate.toDate().toLocaleDateString()}
+                </div>
+              </div>
+              <div>
+                <h2 className="font-semibold text-xl text-gray-900 mb-1" style={{ fontFamily: 'Montserrat, sans-serif' }}>{selectedOrder?.orderNumber}</h2>
+                <p className="text-gray-600">{selectedOrder?.supplierName}</p>
               </div>
             </div>
-            <div>
-              <h2 className="font-semibold text-lg text-gray-900">{selectedOrder.orderNumber}</h2>
-              <p className="text-gray-600 text-sm">{selectedOrder.supplierName}</p>
-            </div>
-          </div>
+          )}
 
-          {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Content */}
+          <div className="pb-16">
             {/* Step 1: Scan truck */}
             {!truck && (
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 className="font-semibold text-lg text-gray-900 mb-4">Paso 1: Escanear Camión</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+              <>
+                <div className="card-mobile mb-6 h-[240px] flex flex-col">
+                  <div className="flex items-center mb-6">
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-purple-600 font-bold text-sm">1</span>
+                    </div>
+                    <h3 className="font-semibold text-xl text-gray-900">Escanear Camión</h3>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
                       Código del Camión
                     </label>
                     <input
@@ -438,44 +456,80 @@ export default function ReceptionsPage() {
                           handleTruckCodeSubmit();
                         }
                       }}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-4 py-4 border-2 border-gray-300 rounded-lg text-xl font-medium focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
                       placeholder="Escanea o ingresa el código"
-                      autoFocus
+                      style={{ height: '60px' }}
                     />
                   </div>
+                </div>
+
+                {/* Button below card */}
+                <div className="mb-6">
                   <button
                     onClick={handleTruckCodeSubmit}
-                    className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg font-medium text-base active:bg-blue-700"
+                    disabled={!truckCode}
+                    className="btn-mobile btn-purple-500 w-full text-lg py-4 disabled:bg-gray-200 disabled:border-gray-300 disabled:text-gray-400"
                   >
                     Confirmar Camión
                   </button>
                 </div>
-              </div>
+              </>
             )}
 
             {/* Step 2: Select material */}
             {truck && !selectedMaterialId && (
               <div className="space-y-4">
-                <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg">
-                  <div className="font-medium">✓ Camión {truck.plate}</div>
-                  <div className="text-sm">Volumen: {truck.volume || 'N/A'} M³</div>
+                {/* Truck card with back button */}
+                <div className="card-mobile bg-green-50 border-green-200 relative">
+                  <button
+                    onClick={() => {
+                      setTruck(null);
+                      setTruckCode('');
+                    }}
+                    className="absolute top-4 right-4 text-green-600 p-2 rounded-full hover:bg-green-100 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 text-green-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <div className="font-semibold text-green-800">Camión {truck?.plate}</div>
+                      <div className="text-sm text-green-600">Volumen: {truck?.volume || 'N/A'} M³</div>
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                  <h3 className="font-semibold text-lg text-gray-900 mb-4">Paso 2: Seleccionar Material</h3>
-                  <div className="space-y-3">
+                {/* Material selection table */}
+                <div className="card-mobile">
+                  <div className="flex items-center mb-4">
+                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-purple-600 font-bold text-sm">2</span>
+                    </div>
+                    <h3 className="font-semibold text-xl text-gray-900">Seleccionar Material</h3>
+                  </div>
+                  
+                  {/* Table header */}
+                  <div className="grid grid-cols-2 gap-2 mb-2 pb-2 border-b border-gray-200">
+                    <div className="text-sm font-semibold text-gray-700">Nombre del material</div>
+                    <div className="text-sm font-semibold text-gray-700 text-right">Pendiente</div>
+                  </div>
+                  
+                  {/* Table rows */}
+                  <div className="space-y-2">
                     {receptionItems
                       .filter(item => item.pendingQuantity > 0)
                       .map((item) => (
                         <button
                           key={item.materialId}
                           onClick={() => handleMaterialSelection(item.materialId)}
-                          className="w-full text-left bg-gray-50 hover:bg-gray-100 active:bg-gray-200 rounded-lg p-4 border border-gray-200"
+                          className="grid grid-cols-2 gap-2 w-full text-left hover:bg-purple-50 active:bg-purple-100 rounded-lg p-3 transition-all duration-200 active:scale-[0.99] min-h-[44px]"
                         >
-                          <div className="font-medium text-gray-900">{item.materialName}</div>
-                          <div className="text-sm text-gray-600 mt-1">
-                            Pendiente: {item.pendingQuantity} {item.materialUnit}
-                          </div>
+                          <div className="font-medium text-gray-900 truncate pr-2">{item.materialName}</div>
+                          <div className="font-semibold text-yellow-600 text-right">{item.pendingQuantity} {item.materialUnit}</div>
                         </button>
                       ))}
                   </div>
@@ -486,47 +540,70 @@ export default function ReceptionsPage() {
             {/* Step 3: Confirm reception */}
             {truck && selectedMaterialId && (
               <div className="space-y-4">
-                <div className="bg-green-100 text-green-800 px-4 py-3 rounded-lg">
-                  <div className="font-medium">✓ Camión {truck.plate}</div>
-                  <div className="text-sm">Volumen: {truck.volume || 'N/A'} M³</div>
+                {/* Truck card with back button */}
+                <div className="card-mobile bg-green-50 border-green-200 relative">
+                  <button
+                    onClick={() => {
+                      setSelectedMaterialId('');
+                    }}
+                    className="absolute top-4 right-4 text-green-600 p-2 rounded-full hover:bg-green-100 transition-colors"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 text-green-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div>
+                      <div className="font-semibold text-green-800">Camión {truck?.plate}</div>
+                      <div className="text-sm text-green-600">Volumen: {truck?.volume || 'N/A'} M³</div>
+                    </div>
+                  </div>
                 </div>
 
                 {receptionItems.filter(item => item.materialId === selectedMaterialId).map((item) => (
-                  <div key={item.materialId} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                    <h3 className="font-semibold text-lg text-gray-900 mb-4">Paso 3: Confirmar Recepción</h3>
+                  <div key={item.materialId} className="card-mobile">
+                    <div className="flex items-center mb-4">
+                      <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                        <span className="text-purple-600 font-bold text-sm">3</span>
+                      </div>
+                      <h3 className="font-semibold text-xl text-gray-900">Confirmar Recepción</h3>
+                    </div>
 
                     <div className="space-y-4">
-                      <div className="bg-blue-50 rounded-lg p-4">
-                        <div className="font-medium text-gray-900 mb-2">{item.materialName}</div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <span className="text-gray-600">Volumen Camión:</span>
-                            <div className="font-medium text-blue-700">{truck.volume || 'N/A'} {item.materialUnit}</div>
+                      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                        <div className="font-semibold text-lg text-gray-900 mb-3">{item.materialName}</div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="bg-white rounded-lg p-3">
+                            <div className="text-gray-600 text-xs mb-1">Volumen Camión:</div>
+                            <div className="font-bold text-lg text-blue-600">{truck?.volume || 'N/A'} {item.materialUnit}</div>
                           </div>
-                          <div>
-                            <span className="text-gray-600">Pendiente:</span>
-                            <div className="font-medium text-gray-900">{item.pendingQuantity} {item.materialUnit}</div>
+                          <div className="bg-white rounded-lg p-3">
+                            <div className="text-gray-600 text-xs mb-1">Pendiente:</div>
+                            <div className="font-bold text-lg text-gray-900">{item.pendingQuantity} {item.materialUnit}</div>
                           </div>
                         </div>
                       </div>
 
                       <div className="border-t border-gray-200 pt-4">
-                        <div className="text-sm font-medium text-gray-700 mb-2">Cantidad a Recibir:</div>
-                        <div className="text-3xl font-bold text-green-600 mb-4">
+                        <div className="font-semibold text-gray-700 mb-3">Cantidad a Recibir:</div>
+                        <div className="text-3xl font-bold text-green-600 mb-4" style={{ fontFamily: 'Montserrat, sans-serif' }}>
                           {item.currentReceived} {item.materialUnit}
                         </div>
 
                         {item.currentReceived > 0 && (
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <div className="text-xs text-gray-600 mb-2">Después de esta recepción:</div>
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div>
-                                <span className="text-gray-500">Total Recibido:</span>
-                                <div className="font-medium">{item.totalReceived}</div>
+                          <div className="bg-gray-50 rounded-xl p-4">
+                            <div className="text-sm font-semibold text-gray-700 mb-3">Después de esta recepción:</div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="bg-white rounded-lg p-3">
+                                <div className="text-gray-500 text-xs mb-1">Total Recibido:</div>
+                                <div className="font-bold text-lg">{item.totalReceived}</div>
                               </div>
-                              <div>
-                                <span className="text-gray-500">Quedará Pendiente:</span>
-                                <div className="font-medium text-yellow-600">{item.pendingQuantity}</div>
+                              <div className="bg-white rounded-lg p-3">
+                                <div className="text-gray-500 text-xs mb-1">Quedará Pendiente:</div>
+                                <div className="font-bold text-lg text-yellow-600">{item.pendingQuantity}</div>
                               </div>
                             </div>
                           </div>
@@ -539,7 +616,7 @@ export default function ReceptionsPage() {
                           setTruck(null);
                           setTruckCode('');
                         }}
-                        className="w-full bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium active:bg-gray-300"
+                        className="btn-mobile btn-secondary w-full text-lg py-4"
                       >
                         Cambiar Material
                       </button>
@@ -552,8 +629,8 @@ export default function ReceptionsPage() {
 
           {/* Fixed footer with action button - only show when ready to submit */}
           {truck && selectedMaterialId && (
-            <div className="bg-white border-t border-gray-200 p-4">
-              <div className="flex space-x-3">
+            <div className="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-mobile">
+              <div className="container-mobile mx-auto flex space-x-4">
                 <button
                   onClick={() => {
                     setSelectedOrder(null);
@@ -561,14 +638,14 @@ export default function ReceptionsPage() {
                     setTruckCode('');
                     setSelectedMaterialId('');
                   }}
-                  className="flex-1 bg-gray-200 text-gray-700 px-4 py-4 rounded-xl font-medium text-base active:bg-gray-300"
+                  className="btn-mobile btn-secondary flex-1 text-lg py-4"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={handleReception}
                   disabled={submitting || !receptionItems.some(item => item.currentReceived > 0)}
-                  className="flex-2 bg-green-600 text-white px-6 py-4 rounded-xl font-medium text-base disabled:bg-gray-300 disabled:cursor-not-allowed active:bg-green-700"
+                  className="btn-mobile btn-green-500 flex-1 text-lg py-4 disabled:opacity-50"
                 >
                   {submitting ? 'Registrando...' : 'Confirmar Recepción'}
                 </button>
@@ -577,6 +654,6 @@ export default function ReceptionsPage() {
           )}
         </div>
       )}
-    </div>
+    </>
   );
 }
