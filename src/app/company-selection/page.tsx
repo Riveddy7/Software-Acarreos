@@ -18,7 +18,7 @@ export default function CompanySelectionPage() {
 
   useEffect(() => {
     if (user) {
-      getCollection<Company>(COMPANIES_COLLECTION, user.companyId).then((data) => {
+      getCollection<Company>(COMPANIES_COLLECTION).then((data) => {
         setCompanies(data);
         setLoading(false);
       });

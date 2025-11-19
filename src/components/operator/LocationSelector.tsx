@@ -76,6 +76,10 @@ export default function LocationSelector() {
     }
   };
 
+  const handleObraChange = (obraId: string) => {
+    setSelectedObra(obraId);
+  };
+
   if (isLoading) {
     return (
       <div className="card-mobile text-gray-700 text-sm">

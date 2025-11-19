@@ -62,7 +62,7 @@ export default function DispatchPage() {
   }, [fetchMasterData]);
 
 
-  const getTruckPlate = (id: string | null) => trucks.find(t => t.id === id)?.plate || 'N/A';
+  const getTruckPlate = (id: string | null) => trucks.find(t => t.id === id)?.placas || 'N/A';
   const getDriverName = (id: string | null) => drivers.find(d => d.id === id)?.name || 'N/A';
 
   const addMaterial = (materialId: string) => {
@@ -100,8 +100,8 @@ export default function DispatchPage() {
         const material = materials.find(m => m.id === item.materialId);
         return {
           materialId: item.materialId,
-          materialName: material?.name || '',
-          materialUnit: material?.unit || '',
+          materialName: material?.nombreParaMostrar || '',
+          materialUnit: material?.unidadNombre || '',
           weight: item.quantity
         };
       });
@@ -159,7 +159,7 @@ export default function DispatchPage() {
 
         // Denormalized shipment data for easy display
         folio: shipmentId,
-        truckPlate: truck?.plate,
+        truckPlate: truck?.placas,
         driverName: driver?.name,
         dispatchLocationName: dispatchLocation?.name,
         deliveryLocationName: null, // Will be set on delivery
@@ -201,7 +201,7 @@ export default function DispatchPage() {
         <option value="" disabled>Seleccione un camión</option>
         {trucks.map(truck => (
           <option key={truck.id} value={truck.id}>
-            {truck.plate} - {truck.model}
+            {truck.placas} - {truck.model}
           </option>
         ))}
       </select>
@@ -272,8 +272,8 @@ export default function DispatchPage() {
                     onClick={() => addMaterial(material.id)}
                     className="w-full text-left px-4 py-3 hover:bg-gray-100 transition-colors border-b border-gray-100 last:border-b-0"
                   >
-                    <div className="font-medium text-sm">{material.name}</div>
-                    <div className="text-xs text-gray-600">Unidad: {material.unit}</div>
+                    <div className="font-medium text-sm">{material.nombreParaMostrar}</div>
+                    <div className="text-xs text-gray-600">Unidad: {material.unidadNombre}</div>
                   </button>
                 ))}
               </div>
@@ -300,8 +300,8 @@ export default function DispatchPage() {
                   <div key={index} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1">
-                        <h5 className="font-medium text-gray-900">{material?.name}</h5>
-                        <p className="text-sm text-gray-600">Unidad: {material?.unit}</p>
+                        <h5 className="font-medium text-gray-900">{material?.nombreParaMostrar}</h5>
+                        <p className="text-sm text-gray-600">Unidad: {material?.unidadNombre}</p>
                       </div>
                       <button
                         onClick={() => removeMaterial(index)}
@@ -389,8 +389,8 @@ export default function DispatchPage() {
                 return (
                   <div key={index} className="bg-white p-2 rounded border border-gray-200 mb-2">
                     <div className="flex justify-between">
-                      <span className="text-gray-800">{material?.name}</span>
-                      <span className="text-gray-600 font-medium">{item.quantity} {material?.unit}</span>
+                      <span className="text-gray-800">{material?.nombreParaMostrar}</span>
+                      <span className="text-gray-600 font-medium">{item.quantity} {material?.unidadNombre}</span>
                     </div>
                   </div>
                 );

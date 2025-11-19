@@ -68,9 +68,9 @@ export default function AdminTicketReaderPage() {
 
         setShipment({
           ...fetchedShipment,
-          truckPlate: truck?.plate || 'Desconocido',
+          truckPlate: truck?.placas || 'Desconocido',
           driverName: driver?.name || 'Desconocido',
-          materialName: material?.name || 'Desconocido',
+          materialName: material?.nombreParaMostrar || 'Desconocido',
           dispatchLocationName: dispatchLocation?.name || 'Desconocido',
           deliveryLocationName: deliveryLocation?.name || 'N/A',
         });
@@ -162,7 +162,7 @@ export default function AdminTicketReaderPage() {
                 <div className="space-y-4">
                   <div>
                     <span className="text-sm font-medium text-gray-500">Peso</span>
-                    <p className="text-[#2D3748]">{shipment.weight} {materials.find(m => m.id === shipment.materialId)?.unit || ''}</p>
+                    <p className="text-[#2D3748]">{shipment.weight} {materials.find(m => m.id === shipment.materialId)?.unidadNombre || ''}</p>
                   </div>
                   
                   <div>

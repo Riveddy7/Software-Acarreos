@@ -290,7 +290,7 @@ export default function AcarreoCaptureForm({
       if (match.requisicion) {
         setFormData(prev => ({
           ...prev,
-          idRequisicionAfectada: match.requisicion.id,
+          idRequisicionAfectada: match.requisicion?.id,
           idLineaRequisicionAfectada: match.linea?.id
         }));
       }
@@ -326,7 +326,6 @@ export default function AcarreoCaptureForm({
         fechaHoraCaptura: new Date() as any,
         latitudUbicacionCaptura: location?.latitude,
         longitudUbicacionCaptura: location?.longitude,
-        esInformativo: (selectedRuta.tipoAcarreoNombre?.toLowerCase().includes('movimiento interno') || false) && (formData.esTiro || false)
       };
 
       // Validate complete form
@@ -380,7 +379,7 @@ export default function AcarreoCaptureForm({
         esTiro: formData.esTiro || false,
         lugarNombre: formData.esCarga ? (selectedRuta.lugarOrigenNombre || '') : (selectedRuta.lugarDestinoNombre || ''),
         kilometrosRuta: selectedRuta.totalKilometrosReales || 0,
-        esInformativo: selectedRuta.tipoAcarreoNombre?.toLowerCase().includes('movimiento interno') && formData.esTiro,
+        esInformativo: (selectedRuta.tipoAcarreoNombre?.toLowerCase().includes('movimiento interno') || false) && (formData.esTiro || false),
         usuarioNombre: formData.nombreMostrarUsuario || 'Operador',
         nota: formData.nota,
         empresaInternaLogo: obra.empresaInternaNombre, // Would be populated

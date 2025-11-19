@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import QRScanner from './QRScanner';
 import { TruckScanInfo, Truck, Transportista } from '@/models/types';
+import { Timestamp } from 'firebase/firestore';
 
 interface TruckScannerSimpleProps {
   onTruckScanned?: (truckInfo: TruckScanInfo) => void;
@@ -22,7 +23,7 @@ export default function TruckScannerSimple({
       // Create a basic truck object from QR data
       const truck: Truck = {
         id: qrData,
-        createdAt: new Date() as any,
+        createdAt: { toDate: () => new Date() } as unknown as Timestamp,
         model: '',
         placas: qrData,
         status: 'AVAILABLE',
@@ -36,7 +37,7 @@ export default function TruckScannerSimple({
       // Create a basic transportista object
       const transportista: Transportista = {
         id: '',
-        createdAt: new Date() as any,
+        createdAt: { toDate: () => new Date() } as unknown as Timestamp,
         nombre: 'Transportista por defecto',
         activo: true
       };
@@ -52,7 +53,7 @@ export default function TruckScannerSimple({
       setError(null);
       onTruckScanned?.(truckInfo);
       console.log('Camión escaneado:', truckInfo);
-    } catch (parseError) {
+    } catch (_parseError) {
       const errorMessage = 'Error al procesar el código QR del camión';
       setError(errorMessage);
       onError?.(errorMessage);

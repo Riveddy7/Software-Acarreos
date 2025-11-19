@@ -84,9 +84,9 @@ export default function AdminShipmentTicketPage() {
 
         setShipment({
           ...fetchedShipment,
-          truckPlate: truck?.plate || 'Desconocido',
+          truckPlate: truck?.placas || 'Desconocido',
           driverName: driver?.name || 'Desconocido',
-          materialName: material?.name || 'Desconocido',
+          materialName: material?.nombreParaMostrar || 'Desconocido',
           dispatchLocationName: dispatchLocation?.name || 'Desconocido',
           deliveryLocationName: deliveryLocation?.name || 'N/A',
         });
@@ -124,7 +124,7 @@ export default function AdminShipmentTicketPage() {
     return <p className="text-center text-gray-700 mt-8">No se pudo cargar la información del ticket o acarreo.</p>;
   }
 
-  const materialUnit = materials.find(m => m.id === shipment.materialId)?.unit || '';
+  const materialUnit = materials.find(m => m.id === shipment.materialId)?.unidadNombre || '';
 
   return (
     <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border border-gray-200 space-y-6">

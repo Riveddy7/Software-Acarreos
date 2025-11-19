@@ -97,9 +97,9 @@ export default function DeliveryPage() {
   };
 
 
-  const getTruckPlate = (id: string | null) => trucks.find(t => t.id === id)?.plate || 'N/A';
+  const getTruckPlate = (id: string | null) => trucks.find(t => t.id === id)?.placas || 'N/A';
   const getDriverName = (id: string | null) => drivers.find(d => d.id === id)?.name || 'N/A';
-  const getMaterialName = (id: string | null) => materials.find(m => m.id === id)?.name || 'N/A';
+  const getMaterialName = (id: string | null) => materials.find(m => m.id === id)?.nombreParaMostrar || 'N/A';
   const getLocationName = (id: string | null) => locations.find(l => l.id === id)?.name || 'N/A';
 
   const handleConfirmDelivery = async () => {

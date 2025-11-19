@@ -13,6 +13,7 @@ import {
   orderBy
 } from 'firebase/firestore';
 
+export const COMPANIES_COLLECTION = 'companies';
 export const TICKETS_COLLECTION = 'tickets';
 export const SHIPMENTS_COLLECTION = 'shipments';
 export const TRUCKS_COLLECTION = 'trucks';

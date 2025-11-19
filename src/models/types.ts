@@ -187,6 +187,15 @@ export interface Supplier extends BaseDoc {
   address?: string;
 }
 
+// Company entity
+export interface Company extends BaseDoc {
+  name: string;
+  contact?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+}
+
 // Purchase Order status
 export type PurchaseOrderStatus = "PENDING" | "PARTIAL" | "COMPLETED" | "CANCELLED";
 

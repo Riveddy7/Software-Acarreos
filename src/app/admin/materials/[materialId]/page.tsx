@@ -67,8 +67,8 @@ export default function MaterialDetailPage() {
 
       <div className="space-y-3 text-gray-700">
         <p><strong>ID:</strong> <span className="font-mono text-sm text-gray-600">{material.id}</span></p>
-        <p><strong>Nombre:</strong> {material.name}</p>
-        <p><strong>Unidad:</strong> {material.unit}</p>
+        <p><strong>Nombre:</strong> {material.nombreParaMostrar}</p>
+        <p><strong>Unidad:</strong> {material.unidadNombre}</p>
       </div>
 
       <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-md border border-gray-200">

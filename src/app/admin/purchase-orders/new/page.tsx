@@ -92,8 +92,8 @@ export default function NewPurchaseOrderPage() {
       // Add new item
       const orderItem: OrderItem = {
         materialId: newItem.materialId,
-        materialName: material.name,
-        materialUnit: material.unit,
+        materialName: material.nombreParaMostrar,
+        materialUnit: material.unidadNombre || '',
         quantity: newItem.quantity
       };
       setOrderItems([...orderItems, orderItem]);
@@ -263,7 +263,7 @@ export default function NewPurchaseOrderPage() {
                 <option value="">Selecciona un material</option>
                 {materials.map(material => (
                   <option key={material.id} value={material.id}>
-                    {material.name} ({material.unit})
+                    {material.nombreParaMostrar} ({material.unidadNombre})
                   </option>
                 ))}
               </select>

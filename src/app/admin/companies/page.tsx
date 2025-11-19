@@ -33,7 +33,7 @@ export default function CompaniesPage() {
     if (!companyId) return;
     try {
       setIsLoading(true);
-      const data = await getCollection<Company>(COMPANIES_COLLECTION, companyId);
+      const data = await getCollection<Company>(COMPANIES_COLLECTION);
       setCompanies(data);
       setError(null);
     } catch (e) {
@@ -97,7 +97,7 @@ export default function CompaniesPage() {
       if (editingCompany) {
         await updateDocument(COMPANIES_COLLECTION, editingCompany.id, data);
       } else {
-        await addDocument(COMPANIES_COLLECTION, data, companyId);
+        await addDocument(COMPANIES_COLLECTION, data);
       }
       await fetchCompanies();
       setIsModalOpen(false);

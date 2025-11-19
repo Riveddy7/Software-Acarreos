@@ -69,7 +69,7 @@ export default function QRScanner({
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (firstError: any) {
+      } catch (_firstError: unknown) {
         console.log('First constraint failed, trying basic constraints');
         try {
           // Fallback 1: Basic video constraints
@@ -78,14 +78,14 @@ export default function QRScanner({
               facingMode: 'environment'
             }
           });
-        } catch (secondError: any) {
+        } catch (_secondError: unknown) {
           console.log('Environment constraint failed, trying any camera');
           try {
             // Fallback 2: Any camera available
             stream = await navigator.mediaDevices.getUserMedia({
               video: true
             });
-          } catch (thirdError: any) {
+          } catch (_thirdError: unknown) {
             // Final fallback with detailed error
             let errorMessage = 'No se pudo acceder a la cámara. ';
             
@@ -161,25 +161,27 @@ export default function QRScanner({
           scan();
         }, 1000);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Camera error:', error);
       setIsLoading(false);
       let errorMessage;
       
-      if (error.name === 'NotAllowedError') {
-        errorMessage = isIOS 
+      const errorObj = error as Error;
+      
+      if (errorObj.name === 'NotAllowedError') {
+        errorMessage = isIOS
           ? 'Permiso de cámara denegado. En iOS, vaya a Configuración > Safari > Cámara y permita el acceso.'
           : 'Permiso de cámara denegado. Por favor, permita el acceso a la cámara en la configuración de su navegador.';
-      } else if (error.name === 'NotFoundError') {
+      } else if (errorObj.name === 'NotFoundError') {
         errorMessage = 'No se encontró cámara en el dispositivo.';
-      } else if (error.name === 'NotReadableError') {
+      } else if (errorObj.name === 'NotReadableError') {
         errorMessage = 'La cámara está siendo utilizada por otra aplicación.';
-      } else if (error.name === 'OverconstrainedError') {
+      } else if (errorObj.name === 'OverconstrainedError') {
         errorMessage = 'La cámara no cumple con los requisitos solicitados.';
-      } else if (error.message && error.message.includes('navegador no soporta')) {
-        errorMessage = error.message;
+      } else if (errorObj.message && errorObj.message.includes('navegador no soporta')) {
+        errorMessage = errorObj.message;
       } else {
-        errorMessage = error.message || 'Error al acceder a la cámara';
+        errorMessage = errorObj.message || 'Error al acceder a la cámara';
       }
       
       setCameraError(errorMessage);

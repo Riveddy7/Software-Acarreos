@@ -166,7 +166,7 @@ export default function ReceptionsPage() {
         deliveryLocationId: userProfile.currentLocationId || '',
         deliveryLocationName: userProfile.currentLocationName || '',
         truckId: truck.id,
-        truckPlate: truck.plate,
+        truckPlate: truck.placas,
         truckVolume: truck.volume ?? 0,
         items: receptionItems.filter(item => item.currentReceived > 0),
         receptionDate: Timestamp.now(),
@@ -205,7 +205,7 @@ export default function ReceptionsPage() {
           status: 'COMPLETADO',
           createdAt: Timestamp.now(),
           // Denormalized data
-          truckPlate: truck.plate,
+          truckPlate: truck.placas,
           driverName: 'RECEPCIÓN',
           dispatchLocationName: selectedOrder.supplierName,
           deliveryLocationName: userProfile.currentLocationName || '',
@@ -235,7 +235,7 @@ export default function ReceptionsPage() {
           supplierName: selectedOrder.supplierName,
           // Denormalized shipment data
           folio: shipmentFolio,
-          truckPlate: truck.plate,
+          truckPlate: truck.placas,
           driverName: 'RECEPCIÓN',
           dispatchLocationName: selectedOrder.supplierName,
           deliveryLocationName: userProfile.currentLocationName || '',
@@ -497,7 +497,7 @@ export default function ReceptionsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <div className="font-semibold text-green-800">Camión {truck?.plate}</div>
+                      <div className="font-semibold text-green-800">Camión {truck?.placas}</div>
                       <div className="text-sm text-green-600">Volumen: {truck?.volume || 'N/A'} M³</div>
                     </div>
                   </div>
@@ -557,7 +557,7 @@ export default function ReceptionsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <div>
-                      <div className="font-semibold text-green-800">Camión {truck?.plate}</div>
+                      <div className="font-semibold text-green-800">Camión {truck?.placas}</div>
                       <div className="text-sm text-green-600">Volumen: {truck?.volume || 'N/A'} M³</div>
                     </div>
                   </div>

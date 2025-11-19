@@ -65,7 +65,7 @@ export default function ShipmentsPage() {
         } else if (shipment.materialId) {
           // Legacy single material shipment
           const material = materialsData.find(m => m.id === shipment.materialId);
-          materialDisplay = material?.name || 'Desconocido';
+          materialDisplay = material?.nombreParaMostrar || 'Desconocido';
         }
 
         // Find the purchase order ID
@@ -75,7 +75,7 @@ export default function ShipmentsPage() {
 
         return {
           ...shipment,
-          truckPlate: truck?.plate || shipment.truckPlate || 'Desconocido',
+          truckPlate: truck?.placas || shipment.truckPlate || 'Desconocido',
           driverName: driver?.name || shipment.driverName || 'Desconocido',
           materialName: materialDisplay,
           dispatchLocationName: dispatchLocation?.name || shipment.dispatchLocationName || 'Desconocido',
