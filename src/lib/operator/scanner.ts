@@ -24,8 +24,8 @@ export class UniversalScanner {
         // Test NFC availability
         const ndef = new (window as any).NDEFReader();
         detectedConfig.nfc = true;
-      } catch (error: any) {
-        console.log('NFC not available:', error);
+      } catch {
+        console.log('NFC not available');
         detectedConfig.nfc = false;
       }
     } else {
@@ -85,7 +85,7 @@ export class UniversalScanner {
         
         ndef.scan()
           .then(() => {
-            ndef.addEventListener("reading", ({ message, serialNumber }: any) => {
+            ndef.addEventListener("reading", ({ message, serialNumber }: { message: any; serialNumber: string }) => {
               const decoder = new TextDecoder();
               let truckId = '';
               
@@ -100,11 +100,11 @@ export class UniversalScanner {
               });
             });
           })
-          .catch((error: any) => {
-            reject(new Error('NFC scan failed: ' + error));
+          .catch((error: unknown) => {
+            reject(new Error('NFC scan failed: ' + (error as Error).message));
           });
-      } catch (error: any) {
-        reject(new Error('NFC initialization failed: ' + error));
+      } catch (error: unknown) {
+        reject(new Error('NFC initialization failed: ' + (error as Error).message));
       }
     });
   }

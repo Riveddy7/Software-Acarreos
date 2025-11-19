@@ -370,12 +370,11 @@ export class PrinterManager {
 
       // Convert content to bytes (ESC/POS commands would go here)
       const encoder = new TextEncoder();
-      const bytes = encoder.encode(content);
-
+      
       // Send to Bluetooth printer
       // This would require specific printer implementation
       console.log('Printing to Bluetooth:', content);
-
+      
       return true;
     } catch (error) {
       console.error('Bluetooth print failed:', error);
@@ -392,11 +391,10 @@ export class PrinterManager {
 
       // Convert content to bytes
       const encoder = new TextEncoder();
-      const bytes = encoder.encode(content);
-
+      
       // Send to USB printer
       console.log('Printing to USB:', content);
-
+      
       return true;
     } catch (error) {
       console.error('USB print failed:', error);

@@ -15,7 +15,7 @@ export interface SortConfig {
 }
 
 export interface FilterConfig {
-  [key: string]: any;
+  [key: string]: string | number | boolean | undefined;
 }
 
 export interface BreadcrumbItem {

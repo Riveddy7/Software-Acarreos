@@ -1,12 +1,10 @@
 import {
   Acarreo,
   Ruta,
-  TipoAcarreo,
   Truck,
   Material,
   RequisicionMaterial,
-  LineaRequisicionMaterial,
-  Obra
+  LineaRequisicionMaterial
 } from '@/models/types';
 
 export interface ValidationResult {
@@ -137,7 +135,7 @@ export class AcarreoValidator {
     lineasRequisicion: LineaRequisicionMaterial[]
   ): Promise<RequisitionMatchResult> {
     // Filter authorized or partially fulfilled requisitions
-    const requisicionesValidas = requisiciones.filter(req =>
+    const requisicionesValidas = requisiciones.filter((req: RequisicionMaterial) =>
       req.estatusAutorizado &&
       req.idObra === acarreoData.idObra
       // Note: idTransportista is not in Acarreo interface, would need to be added
@@ -153,8 +151,8 @@ export class AcarreoValidator {
     }
 
     // Get lines for these requisitions
-    const lineasValidas = lineasRequisicion.filter(linea => 
-      requisicionesValidas.some(req => req.id === linea.idRequisicionMaterial) &&
+    const lineasValidas = lineasRequisicion.filter((linea: LineaRequisicionMaterial) =>
+      requisicionesValidas.some((req: RequisicionMaterial) => req.id === linea.idRequisicionMaterial) &&
       linea.idMaterial === acarreoData.idMaterial &&
       (linea.cantidadAutorizada || linea.cantidad) > (linea.cantidadEntregada || 0)
     );
@@ -168,9 +166,9 @@ export class AcarreoValidator {
     }
 
     // Sort by requisition date (oldest first)
-    lineasValidas.sort((a, b) => {
-      const reqA = requisicionesValidas.find(req => req.id === a.idRequisicionMaterial);
-      const reqB = requisicionesValidas.find(req => req.id === b.idRequisicionMaterial);
+    lineasValidas.sort((a: LineaRequisicionMaterial, b: LineaRequisicionMaterial) => {
+      const reqA = requisicionesValidas.find((req: RequisicionMaterial) => req.id === a.idRequisicionMaterial);
+      const reqB = requisicionesValidas.find((req: RequisicionMaterial) => req.id === b.idRequisicionMaterial);
       
       if (!reqA || !reqB) return 0;
       
@@ -180,7 +178,7 @@ export class AcarreoValidator {
     // Get the first (oldest) valid line
     const lineaSeleccionada = lineasValidas[0];
     const requisicionSeleccionada = requisicionesValidas.find(
-      req => req.id === lineaSeleccionada.idRequisicionMaterial
+      (req: RequisicionMaterial) => req.id === lineaSeleccionada.idRequisicionMaterial
     );
 
     if (!requisicionSeleccionada) {
