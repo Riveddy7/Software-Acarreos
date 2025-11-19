@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Truck } from '@/models/types';
+import { Truck, Transportista, TipoCamion, ClasificacionViaje } from '@/models/types';
 import { TRUCKS_COLLECTION } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
 
@@ -30,7 +30,45 @@ export default function TruckPrintPage() {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        setTruck({ id: docSnap.id, ...docSnap.data() } as Truck);
+        const fetchedTruck = { id: docSnap.id, ...docSnap.data() } as Truck;
+        
+        // Fetch related data
+        const [transportista, tipoCamion, clasificacionViaje] = await Promise.all([
+          // Fetch transportista
+          (async () => {
+            if (fetchedTruck.idTransportista) {
+              const docRef = doc(db, 'transportistas', fetchedTruck.idTransportista);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as Transportista).nombre : undefined;
+            }
+            return undefined;
+          })(),
+          // Fetch tipo camion
+          (async () => {
+            if (fetchedTruck.idTipoCamion) {
+              const docRef = doc(db, 'tiposCamion', fetchedTruck.idTipoCamion);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as TipoCamion).nombre : undefined;
+            }
+            return undefined;
+          })(),
+          // Fetch clasificacion viaje
+          (async () => {
+            if (fetchedTruck.idClasificacionViaje) {
+              const docRef = doc(db, 'clasificacionesViaje', fetchedTruck.idClasificacionViaje);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as ClasificacionViaje).nombre : undefined;
+            }
+            return undefined;
+          })()
+        ]);
+
+        setTruck({
+          ...fetchedTruck,
+          transportistaNombre: transportista,
+          tipoCamionNombre: tipoCamion,
+          clasificacionViajeNombre: clasificacionViaje
+        });
         setError(null);
       } else {
         setError('Camión no encontrado.');
@@ -64,13 +102,17 @@ export default function TruckPrintPage() {
       <div className="w-full max-w-sm bg-white rounded-lg shadow-lg p-6 text-center print:shadow-none print:border print:border-gray-300">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">Tarjeta de Camión</h1>
         
-        <div className="mb-4">
-          <p className="text-lg font-semibold text-gray-700">Placa: {truck.plate}</p>
-          <p className="text-md text-gray-600">Modelo: {truck.model}</p>
+        <div className="mb-4 space-y-2">
+          <p className="text-lg font-semibold text-gray-700">{truck.nombreParaMostrar}</p>
+          <p className="text-md text-gray-600">Placas: {truck.placas}</p>
+          <p className="text-md text-gray-600">Marca: {truck.marca || 'N/A'}</p>
+          <p className="text-md text-gray-600">Modelo: {truck.model || 'N/A'}</p>
+          <p className="text-md text-gray-600">Transportista: {truck.transportistaNombre || 'N/A'}</p>
+          <p className="text-md text-gray-600">Tipo: {truck.tipoCamionNombre || 'N/A'}</p>
         </div>
 
         <div className="flex justify-center mb-4">
-          <QrCodeDisplay value={truck.id} size={200} /> {/* Prominent QR code */}
+          <QrCodeDisplay value={truck.id} size={200} />
         </div>
 
         <p className="text-sm text-gray-500">ID del Camión: <span className="font-mono text-gray-700">{truck.id}</span></p>

@@ -22,7 +22,9 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
     PARTIAL: 'Parcial',
     COMPLETED: 'Completado',
     CANCELLED: 'Cancelado',
-    EN_TRANSITO: 'En Tránsito'
+    EN_TRANSITO: 'En Tránsito',
+    ACTIVO: 'Activo',
+    INACTIVO: 'Inactivo'
   };
   
   const sizeClasses = {

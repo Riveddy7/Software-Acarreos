@@ -1,5 +1,5 @@
-export type Status = 'PENDING' | 'PARTIAL' | 'COMPLETED' | 'CANCELLED' | 'EN_TRANSITO';
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost';
+export type Status = 'PENDING' | 'PARTIAL' | 'COMPLETED' | 'CANCELLED' | 'EN_TRANSITO' | 'ACTIVO' | 'INACTIVO';
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline' | 'success';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface PaginationInfo {

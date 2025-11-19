@@ -2,123 +2,113 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Location } from '@/models/types';
+import { Company } from '@/models/types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firebase/firestore';
-import Link from 'next/link';
 import Modal from '@/components/ui/Modal';
-import LocationForm from '@/components/admin/LocationForm';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { DataTable } from '@/components/ui/DataTable';
 import { Column } from '@/components/ui/DataTable';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useCompany } from '@/contexts/CompanyContext';
 
-const LOCATIONS_COLLECTION = 'locations';
+import CompanyForm from '@/components/admin/CompanyForm';
 
-export default function LocationsPage() {
-  const [locations, setLocations] = useState<Location[]>([]);
+const COMPANIES_COLLECTION = 'companies';
+
+export default function CompaniesPage() {
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingLocation, setEditingLocation] = useState<Location | null>(null);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const { companyId } = useCompany();
 
-  const fetchLocations = useCallback(async () => {
+  const fetchCompanies = useCallback(async () => {
+    if (!companyId) return;
     try {
       setIsLoading(true);
-      const data = await getCollection<Location>(LOCATIONS_COLLECTION);
-      setLocations(data);
+      const data = await getCollection<Company>(COMPANIES_COLLECTION, companyId);
+      setCompanies(data);
       setError(null);
     } catch (e) {
       console.error(e);
-      setError('No se pudieron cargar las ubicaciones. Asegúrate de que tu configuración de Firebase sea correcta.');
+      setError('No se pudieron cargar las empresas. Asegúrate de que tu configuración de Firebase sea correcta.');
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [companyId]);
 
   useEffect(() => {
-    fetchLocations();
-  }, [fetchLocations]);
+    if (companyId) {
+      fetchCompanies();
+    }
+  }, [companyId, fetchCompanies]);
 
   const handleAddNew = () => {
-    setEditingLocation(null);
+    setEditingCompany(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (location: Location) => {
-    setEditingLocation(location);
+  const handleEdit = (company: Company) => {
+    setEditingCompany(company);
     setIsModalOpen(true);
   };
 
   const handleDelete = async () => {
-    if (!selectedLocation) return;
+    if (!selectedCompany) return;
     
     try {
       setDeleting(true);
-      await deleteDocument(LOCATIONS_COLLECTION, selectedLocation.id);
-      await fetchLocations();
+      await deleteDocument(COMPANIES_COLLECTION, selectedCompany.id);
+      await fetchCompanies();
       setIsDeleteModalOpen(false);
-      setSelectedLocation(null);
+      setSelectedCompany(null);
     } catch (e) {
       console.error(e);
-      alert('Error al eliminar la ubicación.');
+      alert('Error al eliminar la empresa.');
     } finally {
       setDeleting(false);
     }
   };
 
-  const openDeleteModal = (location: Location) => {
-    setSelectedLocation(location);
+  const openDeleteModal = (company: Company) => {
+    setSelectedCompany(company);
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
-    setSelectedLocation(null);
+    setSelectedCompany(null);
   };
 
-  // Filter locations based on search query
-  const filteredLocations = locations.filter(location =>
-    location.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    location.address.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    location.id.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredCompanies = companies.filter(company =>
+    company.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSave = async (data: Omit<Location, 'id' | 'createdAt'>) => {
+  const handleSave = async (data: Omit<Company, 'id' | 'createdAt'>) => {
+    if (!companyId) return;
     try {
-      if (editingLocation) {
-        await updateDocument(LOCATIONS_COLLECTION, editingLocation.id, data);
+      if (editingCompany) {
+        await updateDocument(COMPANIES_COLLECTION, editingCompany.id, data);
       } else {
-        await addDocument(LOCATIONS_COLLECTION, data);
+        await addDocument(COMPANIES_COLLECTION, data, companyId);
       }
-      await fetchLocations();
+      await fetchCompanies();
       setIsModalOpen(false);
-      setEditingLocation(null);
+      setEditingCompany(null);
     } catch (e) {
       console.error(e);
-      alert('Error al guardar la ubicación.');
+      alert('Error al guardar la empresa.');
     }
   };
 
-  // Define columns for the DataTable
-  const columns: Column<Location>[] = [
-    {
-      key: 'id',
-      label: 'ID',
-      render: (value) => (
-        <Link
-          href={`/admin/locations/${value}`}
-          className="font-mono text-sm text-green-600 hover:text-green-800"
-        >
-          {value}
-        </Link>
-      )
-    },
+  const columns: Column<Company>[] = [
     {
       key: 'name',
       label: 'Nombre',
@@ -127,18 +117,14 @@ export default function LocationsPage() {
       )
     },
     {
-      key: 'address',
-      label: 'Dirección'
-    },
-    {
-      key: 'id' as keyof Location,
+      key: 'id' as keyof Company,
       label: 'Acciones',
-      render: (_, location) => (
+      render: (_, company) => (
         <div className="flex space-x-2">
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => handleEdit(location)}
+            onClick={() => handleEdit(company)}
             className="text-green-600 hover:text-green-800"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -148,7 +134,7 @@ export default function LocationsPage() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => openDeleteModal(location)}
+            onClick={() => openDeleteModal(company)}
             className="text-red-600 hover:text-red-800"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -165,14 +151,14 @@ export default function LocationsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="md:col-span-3">
           <SearchInput
-            placeholder="Buscar por nombre, dirección o ID..."
+            placeholder="Buscar por nombre..."
             value={searchQuery}
             onChange={setSearchQuery}
           />
         </div>
         <div className="md:col-span-1">
           <Button onClick={handleAddNew} className="w-full">
-            Nueva Ubicación
+            Nueva Empresa
           </Button>
         </div>
       </div>
@@ -184,19 +170,19 @@ export default function LocationsPage() {
       )}
 
       <DataTable
-        data={filteredLocations}
+        data={filteredCompanies}
         columns={columns}
         loading={isLoading}
-        emptyMessage="No hay ubicaciones que coincidan con la búsqueda"
+        emptyMessage="No hay empresas que coincidan con la búsqueda"
       />
 
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingLocation ? 'Editar Ubicación' : 'Agregar Nueva Ubicación'}
+        title={editingCompany ? 'Editar Empresa' : 'Agregar Nueva Empresa'}
       >
-        <LocationForm
-          location={editingLocation}
+        <CompanyForm
+          company={editingCompany}
           onSave={handleSave}
           onCancel={() => setIsModalOpen(false)}
         />
@@ -206,8 +192,8 @@ export default function LocationsPage() {
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
         onConfirm={handleDelete}
-        title="Eliminar Ubicación"
-        message={`¿Estás seguro de que quieres eliminar la ubicación "${selectedLocation?.name}"? Esta acción no se puede deshacer.`}
+        title="Eliminar Empresa"
+        message={`¿Estás seguro de que quieres eliminar la empresa "${selectedCompany?.name}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         danger={true}
         loading={deleting}

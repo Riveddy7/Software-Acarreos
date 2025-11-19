@@ -1,148 +1,182 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { getCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firebase/firestore';
-import { Supplier } from '@/models/types';
+import { Proveedor } from '@/models/types';
 import { SUPPLIERS_COLLECTION } from '@/lib/firebase/firestore';
 import Modal from '@/components/ui/Modal';
-import SupplierForm from '@/components/admin/SupplierForm';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { DataTable } from '@/components/ui/DataTable';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Column } from '@/components/ui/DataTable';
 
-export default function SuppliersPage() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [selectedSupplier, setSelectedSupplier] = useState<Supplier | null>(null);
-  const [deleting, setDeleting] = useState(false);
+interface ProveedorFormProps {
+  proveedor?: Proveedor | null;
+  onSave: (data: Omit<Proveedor, 'id' | 'createdAt'>) => void;
+  onCancel: () => void;
+}
+
+function ProveedorForm({ proveedor, onSave, onCancel }: ProveedorFormProps) {
+  const [nombreParaMostrar, setNombreParaMostrar] = useState('');
 
   useEffect(() => {
-    loadSuppliers();
+    if (proveedor) {
+      setNombreParaMostrar(proveedor.nombreParaMostrar || '');
+    } else {
+      setNombreParaMostrar('');
+    }
+  }, [proveedor]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nombreParaMostrar) {
+      alert('Por favor, ingrese el nombre del proveedor.');
+      return;
+    }
+    onSave({ nombreParaMostrar });
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4">
+        <div>
+          <label htmlFor="nombreParaMostrar" className="block text-sm font-medium text-gray-700 mb-1">Nombre para mostrar *</label>
+          <input
+            type="text"
+            id="nombreParaMostrar"
+            value={nombreParaMostrar}
+            onChange={(e) => setNombreParaMostrar(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+            placeholder="Ej: Constructora ABC S.A. de C.V."
+            required
+          />
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end space-x-3">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 rounded-md text-gray-700 bg-gray-200 hover:bg-gray-300 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400"
+        >
+          Cancelar
+        </button>
+        <button
+          type="submit"
+          className="px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Guardar
+        </button>
+      </div>
+    </form>
+  );
+}
+
+export default function ProveedoresPage() {
+  const [proveedores, setProveedores] = useState<Proveedor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProveedor, setEditingProveedor] = useState<Proveedor | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedProveedor, setSelectedProveedor] = useState<Proveedor | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const fetchProveedores = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const proveedoresData = await getCollection<Proveedor>(SUPPLIERS_COLLECTION);
+      setProveedores(proveedoresData);
+      setError(null);
+    } catch (e) {
+      console.error(e);
+      setError('No se pudieron cargar los proveedores. Asegúrate de que tu configuración de Firebase sea correcta.');
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const loadSuppliers = async () => {
-    try {
-      const suppliersData = await getCollection<Supplier>(SUPPLIERS_COLLECTION);
-      setSuppliers(suppliersData);
-    } catch (error) {
-      console.error('Error loading suppliers:', error);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    fetchProveedores();
+  }, [fetchProveedores]);
+
+  const handleAddNew = () => {
+    setEditingProveedor(null);
+    setIsModalOpen(true);
   };
 
-  const handleAddSupplier = async (supplierData: Omit<Supplier, 'id' | 'createdAt'>) => {
-    try {
-      await addDocument(SUPPLIERS_COLLECTION, supplierData);
-      loadSuppliers();
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error('Error adding supplier:', error);
-    }
+  const handleEdit = (proveedor: Proveedor) => {
+    setEditingProveedor(proveedor);
+    setIsModalOpen(true);
   };
 
-  const handleEditSupplier = async (supplierData: Omit<Supplier, 'id' | 'createdAt'>) => {
-    if (!editingSupplier) return;
-
-    try {
-      await updateDocument(SUPPLIERS_COLLECTION, editingSupplier.id, supplierData);
-      loadSuppliers();
-      setIsModalOpen(false);
-      setEditingSupplier(null);
-    } catch (error) {
-      console.error('Error updating supplier:', error);
-    }
-  };
-
-  const handleDeleteSupplier = async () => {
-    if (!selectedSupplier) return;
+  const handleDelete = async () => {
+    if (!selectedProveedor) return;
     
     try {
       setDeleting(true);
-      await deleteDocument(SUPPLIERS_COLLECTION, selectedSupplier.id);
-      loadSuppliers();
+      await deleteDocument(SUPPLIERS_COLLECTION, selectedProveedor.id);
+      await fetchProveedores();
       setIsDeleteModalOpen(false);
-      setSelectedSupplier(null);
-    } catch (error) {
-      console.error('Error deleting supplier:', error);
+      setSelectedProveedor(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error al eliminar el proveedor.');
     } finally {
       setDeleting(false);
     }
   };
 
-  const openEditModal = (supplier: Supplier) => {
-    setEditingSupplier(supplier);
-    setIsModalOpen(true);
-  };
-
-  const openAddModal = () => {
-    setEditingSupplier(null);
-    setIsModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingSupplier(null);
-  };
-
-  const openDeleteModal = (supplier: Supplier) => {
-    setSelectedSupplier(supplier);
+  const openDeleteModal = (proveedor: Proveedor) => {
+    setSelectedProveedor(proveedor);
     setIsDeleteModalOpen(true);
   };
 
   const closeDeleteModal = () => {
     setIsDeleteModalOpen(false);
-    setSelectedSupplier(null);
+    setSelectedProveedor(null);
   };
 
-  const filteredSuppliers = suppliers.filter(supplier =>
-    supplier.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredProveedores = proveedores.filter(proveedor =>
+    proveedor.nombreParaMostrar && proveedor.nombreParaMostrar.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleSave = async (proveedorData: Omit<Proveedor, 'id' | 'createdAt'>) => {
+    try {
+      if (editingProveedor) {
+        await updateDocument(SUPPLIERS_COLLECTION, editingProveedor.id, proveedorData);
+      } else {
+        await addDocument(SUPPLIERS_COLLECTION, proveedorData);
+      }
+      await fetchProveedores();
+      setIsModalOpen(false);
+      setEditingProveedor(null);
+    } catch (e) {
+      console.error(e);
+      alert('Error al guardar el proveedor.');
+    }
+  };
+
   // Definir columnas para la tabla
-  const columns: Column<Supplier>[] = [
+  const columns: Column<Proveedor>[] = [
     {
-      key: 'name',
+      key: 'nombreParaMostrar',
       label: 'Nombre',
-      render: (value, supplier) => (
-        <div>
-          <div className="font-medium text-gray-900">{value}</div>
-          {supplier.address && (
-            <div className="text-sm text-gray-500">{supplier.address}</div>
-          )}
-        </div>
+      render: (value) => (
+        <span className="font-medium text-gray-900">{value || 'Sin nombre'}</span>
       )
     },
     {
-      key: 'contact',
-      label: 'Contacto',
-      render: (value) => value || '-'
-    },
-    {
-      key: 'phone',
-      label: 'Teléfono',
-      render: (value) => value || '-'
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      render: (value) => value || '-'
-    },
-    {
-      key: 'id' as keyof Supplier,
+      key: 'id' as keyof Proveedor,
       label: 'Acciones',
-      render: (_, supplier) => (
+      render: (_, proveedor) => (
         <div className="flex space-x-2">
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => openEditModal(supplier)}
+            onClick={() => handleEdit(proveedor)}
             className="text-green-600 hover:text-green-800"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -152,7 +186,7 @@ export default function SuppliersPage() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => openDeleteModal(supplier)}
+            onClick={() => openDeleteModal(proveedor)}
             className="text-red-600 hover:text-red-800"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -164,63 +198,54 @@ export default function SuppliersPage() {
     }
   ];
 
-  if (loading) {
-    return (
-      <div className="p-8">
-        <DataTable
-          data={[]}
-          columns={columns}
-          loading={true}
-        />
-      </div>
-    );
-  }
-
   return (
     <div className="p-8">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="md:col-span-3">
           <SearchInput
-            placeholder="Buscar por nombre de proveedor..."
+            placeholder="Buscar por nombre..."
             value={searchQuery}
             onChange={setSearchQuery}
           />
         </div>
         <div className="md:col-span-1">
-          <Button onClick={openAddModal} className="w-full">
-            <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
-            </svg>
+          <Button onClick={handleAddNew} variant="success" className="w-full">
             Nuevo Proveedor
           </Button>
         </div>
       </div>
-      
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-md border border-red-200">
+          {error}
+        </div>
+      )}
+
       <DataTable
-        data={filteredSuppliers}
+        data={filteredProveedores}
         columns={columns}
-        loading={loading}
+        loading={isLoading}
         emptyMessage="No hay proveedores que coincidan con la búsqueda"
       />
-      
+
       <Modal
         isOpen={isModalOpen}
-        onClose={closeModal}
-        title={editingSupplier ? 'Editar Proveedor' : 'Agregar Proveedor'}
+        onClose={() => setIsModalOpen(false)}
+        title={editingProveedor ? 'Editar Proveedor' : 'Agregar Nuevo Proveedor'}
       >
-        <SupplierForm
-          supplier={editingSupplier}
-          onSubmit={editingSupplier ? handleEditSupplier : handleAddSupplier}
-          onCancel={closeModal}
+        <ProveedorForm
+          proveedor={editingProveedor}
+          onSave={handleSave}
+          onCancel={() => setIsModalOpen(false)}
         />
       </Modal>
 
       <ConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        onConfirm={handleDeleteSupplier}
+        onConfirm={handleDelete}
         title="Eliminar Proveedor"
-        message={`¿Estás seguro de que quieres eliminar el proveedor "${selectedSupplier?.name}"? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de que quieres eliminar el proveedor "${selectedProveedor?.nombreParaMostrar || 'Sin nombre'}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         danger={true}
         loading={deleting}

@@ -23,6 +23,8 @@ export const USERS_COLLECTION = 'users';
 export const SUPPLIERS_COLLECTION = 'suppliers';
 export const PURCHASE_ORDERS_COLLECTION = 'purchaseOrders';
 export const RECEPTIONS_COLLECTION = 'receptions';
+export const ACARREOS_COLLECTION = 'acarreos';
+export const REQUISICIONES_MATERIAL_COLLECTION = 'requisiciones-material';
 
 /**
  * Fetches all documents from a specified collection and orders them by creation date.

@@ -3,11 +3,11 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Material } from '@/models/types';
+import { Material, ClasificacionMaterial, Unidad } from '@/models/types';
 import { getCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
-import Modal from '@/components/ui/Modal';
 import MaterialForm from '@/components/admin/MaterialForm';
+import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { SearchInput } from '@/components/ui/SearchInput';
 import { DataTable } from '@/components/ui/DataTable';
@@ -85,8 +85,10 @@ export default function MaterialsPage() {
 
   // Filter materials based on search query
   const filteredMaterials = materials.filter(material =>
-    material.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    material.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (material.nombreParaMostrar?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (material.descripcionNotas?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (material.clasificacionMaterialNombre?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (material.unidadNombre?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
     material.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -118,15 +120,21 @@ export default function MaterialsPage() {
       )
     },
     {
-      key: 'name',
+      key: 'nombreParaMostrar',
       label: 'Nombre',
       render: (value) => (
         <span className="font-medium text-gray-900">{value}</span>
       )
     },
     {
-      key: 'unit',
-      label: 'Unidad'
+      key: 'clasificacionMaterialNombre',
+      label: 'Clasificación',
+      render: (value) => value || 'N/A'
+    },
+    {
+      key: 'unidadNombre',
+      label: 'Unidad',
+      render: (value) => value || 'N/A'
     },
     {
       key: 'id',
@@ -147,7 +155,7 @@ export default function MaterialsPage() {
             className="text-green-600 hover:text-green-800"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828L8.586-8.586z" />
             </svg>
           </Button>
           <Button
@@ -170,13 +178,13 @@ export default function MaterialsPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="md:col-span-3">
           <SearchInput
-            placeholder="Buscar por nombre, unidad o ID..."
+            placeholder="Buscar por nombre, clasificación, unidad o ID..."
             value={searchQuery}
             onChange={setSearchQuery}
           />
         </div>
         <div className="md:col-span-1">
-          <Button onClick={handleAddNew} className="w-full">
+          <Button onClick={handleAddNew} variant="success" className="w-full">
             Nuevo Material
           </Button>
         </div>
@@ -212,7 +220,7 @@ export default function MaterialsPage() {
         onClose={closeDeleteModal}
         onConfirm={handleDelete}
         title="Eliminar Material"
-        message={`¿Estás seguro de que quieres eliminar el material "${selectedMaterial?.name}"? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de que quieres eliminar el material "${selectedMaterial?.nombreParaMostrar}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         danger={true}
         loading={deleting}

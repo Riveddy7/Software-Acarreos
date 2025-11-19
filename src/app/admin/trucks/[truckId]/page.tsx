@@ -6,9 +6,10 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Truck, Driver } from '@/models/types';
+import { Truck, Driver, Transportista, TipoCamion, ClasificacionViaje } from '@/models/types';
 import { TRUCKS_COLLECTION, DRIVERS_COLLECTION } from '@/lib/firebase/firestore';
 import QrCodeDisplay from '@/components/admin/QrCodeDisplay';
+import { StatusBadge } from '@/components/ui/StatusBadge';
 
 export default function TruckDetailPage() {
   const router = useRouter();
@@ -34,16 +35,63 @@ export default function TruckDetailPage() {
       if (docSnap.exists()) {
         const fetchedTruck = { id: docSnap.id, ...docSnap.data() } as Truck;
         
-        let driverName: string | undefined;
-        if (fetchedTruck.status === 'IN_SHIPMENT' && fetchedTruck.currentDriverId) {
-          const driverDocRef = doc(db, DRIVERS_COLLECTION, fetchedTruck.currentDriverId);
-          const driverDocSnap = await getDoc(driverDocRef);
-          if (driverDocSnap.exists()) {
-            driverName = (driverDocSnap.data() as Driver).name;
-          }
-        }
+        // Fetch related data
+        const [driverName, transportista, tipoCamion, clasificacionViaje, ultimoCamionero] = await Promise.all([
+          // Fetch driver name if in shipment
+          (async () => {
+            if (fetchedTruck.status === 'IN_SHIPMENT' && fetchedTruck.currentDriverId) {
+              const driverDocRef = doc(db, DRIVERS_COLLECTION, fetchedTruck.currentDriverId);
+              const driverDocSnap = await getDoc(driverDocRef);
+              return driverDocSnap.exists() ? (driverDocSnap.data() as Driver).name : undefined;
+            }
+            return undefined;
+          })(),
+          // Fetch transportista
+          (async () => {
+            if (fetchedTruck.idTransportista) {
+              const docRef = doc(db, 'transportistas', fetchedTruck.idTransportista);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as Transportista).nombre : undefined;
+            }
+            return undefined;
+          })(),
+          // Fetch tipo camion
+          (async () => {
+            if (fetchedTruck.idTipoCamion) {
+              const docRef = doc(db, 'tiposCamion', fetchedTruck.idTipoCamion);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as TipoCamion).nombre : undefined;
+            }
+            return undefined;
+          })(),
+          // Fetch clasificacion viaje
+          (async () => {
+            if (fetchedTruck.idClasificacionViaje) {
+              const docRef = doc(db, 'clasificacionesViaje', fetchedTruck.idClasificacionViaje);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as ClasificacionViaje).nombre : undefined;
+            }
+            return undefined;
+          })(),
+          // Fetch ultimo camionero
+          (async () => {
+            if (fetchedTruck.idUltimoCamionero) {
+              const docRef = doc(db, DRIVERS_COLLECTION, fetchedTruck.idUltimoCamionero);
+              const docSnap = await getDoc(docRef);
+              return docSnap.exists() ? (docSnap.data() as Driver).name : undefined;
+            }
+            return undefined;
+          })()
+        ]);
 
-        setTruck({ ...fetchedTruck, currentDriverName: driverName });
+        setTruck({
+          ...fetchedTruck,
+          currentDriverName: driverName,
+          transportistaNombre: transportista,
+          tipoCamionNombre: tipoCamion,
+          clasificacionViajeNombre: clasificacionViaje,
+          ultimoCamioneroNombre: ultimoCamionero
+        });
         setError(null);
       } else {
         setError('Camión no encontrado.');
@@ -73,25 +121,48 @@ export default function TruckDetailPage() {
   }
 
   return (
-    <div className="w-full max-w-md mx-auto p-6 bg-white rounded-lg shadow-md border border-gray-200 space-y-6">
+    <div className="w-full max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-md border border-gray-200 space-y-6">
       <h2 className="text-2xl font-bold text-center text-gray-800 mb-4">Detalle del Camión</h2>
 
-      <div className="space-y-3 text-gray-700">
-        <p><strong>ID:</strong> <span className="font-mono text-sm text-gray-600">{truck.id}</span></p>
-        <p><strong>Placa:</strong> {truck.plate}</p>
-        <p><strong>Modelo:</strong> {truck.model}</p>
-        <p><strong>Estado:</strong> <span className={`px-2 py-1 rounded-full text-xs font-semibold ${truck.status === 'IN_SHIPMENT' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{truck.status === 'IN_SHIPMENT' ? 'En Acarreo' : 'Disponible'}</span></p>
-        {truck.status === 'IN_SHIPMENT' && truck.currentShipmentId && (
-          <p><strong>Acarreo Actual:</strong> <Link href={`/admin/shipments/${truck.currentShipmentId}`} className="text-blue-600 hover:underline">{truck.currentShipmentId}</Link></p>
-        )}
-        {truck.status === 'IN_SHIPMENT' && truck.currentDriverName && (
-          <p><strong>Chofer Actual:</strong> {truck.currentDriverName}</p>
-        )}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
+        <div className="space-y-3">
+          <p><strong>ID:</strong> <span className="font-mono text-sm text-gray-600">{truck.id}</span></p>
+          <p><strong>Nombre para mostrar:</strong> {truck.nombreParaMostrar}</p>
+          <p><strong>Placas:</strong> {truck.placas}</p>
+          <p><strong>Marca:</strong> {truck.marca || 'N/A'}</p>
+          <p><strong>Modelo:</strong> {truck.model || 'N/A'}</p>
+          <p><strong>Número de serie:</strong> {truck.numeroSerie || 'N/A'}</p>
+          <p><strong>Volumen:</strong> {truck.volume ? `${truck.volume} M³` : 'N/A'}</p>
+        </div>
+        
+        <div className="space-y-3">
+          <p><strong>Transportista:</strong> {truck.transportistaNombre || 'N/A'}</p>
+          <p><strong>Tipo de camión:</strong> {truck.tipoCamionNombre || 'N/A'}</p>
+          <p><strong>Clasificación de viaje:</strong> {truck.clasificacionViajeNombre || 'N/A'}</p>
+          <p><strong>Último camionero:</strong> {truck.ultimoCamioneroNombre || 'N/A'}</p>
+          <p><strong>Estatus activo:</strong> <StatusBadge status={truck.estatusActivo ? 'ACTIVO' : 'INACTIVO'} /></p>
+          <p><strong>Estado:</strong> <StatusBadge status={truck.status === 'IN_SHIPMENT' ? 'EN_TRANSITO' : 'COMPLETED'} /></p>
+          {truck.status === 'IN_SHIPMENT' && truck.currentShipmentId && (
+            <p><strong>Acarreo Actual:</strong> <Link href={`/admin/shipments/${truck.currentShipmentId}`} className="text-blue-600 hover:underline">{truck.currentShipmentId}</Link></p>
+          )}
+          {truck.status === 'IN_SHIPMENT' && truck.currentDriverName && (
+            <p><strong>Chofer Actual:</strong> {truck.currentDriverName}</p>
+          )}
+        </div>
       </div>
+
+      {truck.descripcionNotas && (
+        <div className="mt-4">
+          <p><strong>Descripción o notas:</strong></p>
+          <p className="mt-1 p-3 bg-gray-50 rounded-md border border-gray-200 text-gray-700">
+            {truck.descripcionNotas}
+          </p>
+        </div>
+      )}
 
       <div className="flex flex-col items-center justify-center p-4 bg-gray-50 rounded-md border border-gray-200">
         <p className="text-lg font-semibold text-gray-800 mb-4">Código QR para Imprimir</p>
-        <QrCodeDisplay value={truck.id} size={256} /> {/* Larger QR code */}
+        <QrCodeDisplay value={truck.id} size={256} />
       </div>
 
       <div className="flex justify-center mt-8 space-x-4">

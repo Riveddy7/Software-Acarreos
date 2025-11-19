@@ -21,20 +21,45 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
   }, [setTheme]);
 
   const navItems = [
-    { name: 'Dashboard', href: '/admin' },
+    // OPERACIONES PRINCIPALES (más usado)
+    { name: 'Vista de Requisiciones', href: '/admin/requisiciones-material-vista' },
+    { name: 'Acarreos', href: '/admin/acarreos' },
     { name: '---', href: '#' },
-    { name: 'Órdenes de Compra', href: '/admin/purchase-orders' },
+    
+    // GESTIÓN DE CAMIONES Y TRANSPORTE
+    { name: 'Camiones', href: '/admin/trucks' },
+    { name: 'Transportistas', href: '/admin/transportistas' },
+    { name: 'Tipos de Camión', href: '/admin/tipos-camion' },
+    { name: 'Clasificaciones de Viaje', href: '/admin/clasificaciones-viaje' },
+    { name: '---', href: '#' },
+    
+    // GESTIÓN DE OBRAS Y LOGÍSTICA
+    { name: 'Obras', href: '/admin/obras' },
+    { name: 'Lugares', href: '/admin/lugares' },
+    { name: 'Rutas', href: '/admin/rutas' },
+    { name: 'Tipos de Acarreos', href: '/admin/tipos-acarreo' },
+    { name: 'Operadores', href: '/admin/operadores' },
+    { name: '---', href: '#' },
+    
+    // GESTIÓN DE MATERIALES Y PROVEEDORES
+    { name: 'Materiales', href: '/admin/materials' },
+    { name: 'Clasificaciones de Material', href: '/admin/clasificaciones-material' },
+    { name: 'Unidades', href: '/admin/unidades' },
     { name: 'Proveedores', href: '/admin/suppliers' },
     { name: '---', href: '#' },
-    { name: 'Acarreos', href: '/admin/shipments' },
-    { name: 'Camiones', href: '/admin/trucks' },
-    { name: 'Choferes', href: '/admin/drivers' },
-    { name: 'Materiales', href: '/admin/materials' },
-    { name: 'Ubicaciones', href: '/admin/locations' },
+    
+    // GESTIÓN ADMINISTRATIVA (menos usado)
+    { name: 'Clientes', href: '/admin/clientes' },
+    { name: 'Empresas Internas', href: '/admin/empresas-internas' },
+    { name: '---', href: '#' },
+    
+    // SISTEMA Y OPERACIONES
     { name: 'Lector de Tickets', href: '/admin/ticket-reader' },
     { name: 'Tickets', href: '/admin/tickets' },
     { name: 'Usuarios', href: '/admin/users' },
     { name: '---', href: '#' },
+    
+    // ACCESO MÓVIL
     { name: 'Operador Móvil', href: '/operator' },
   ];
 
@@ -59,8 +84,8 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     <div className="flex h-screen bg-gray-100 text-gray-900">
       <DesktopSidebar navItems={navItems} theme="light" />
 
-      <div className="flex-1 flex flex-col">
-        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-white border-gray-200">
+      <div className="flex-1 flex flex-col min-h-0">
+        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-white border-gray-200 flex-shrink-0">
           <Link href="/admin" className="text-xl tracking-wider transition-colors block" style={{ fontFamily: "'Montserrat', sans-serif" }}>
             <span style={{ color: '#2D3748', fontWeight: 900 }}>Acarreo</span><span style={{ color: '#38A169', fontWeight: 800 }}>.mx</span>
           </Link>
@@ -76,7 +101,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <header className="hidden lg:flex items-center justify-between px-6 py-4 border-b bg-white border-gray-200">
+        <header className="hidden lg:flex items-center justify-between px-6 py-4 border-b bg-white border-gray-200 flex-shrink-0">
           <div className="flex items-center space-x-4">
             <h1 className="text-lg font-extrabold tracking-wide" style={{ color: '#2D3748' }}>{getPageTitle()}</h1>
           </div>

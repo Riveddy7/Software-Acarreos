@@ -27,12 +27,12 @@ export default function DesktopSidebar({ navItems, theme }: DesktopSidebarProps)
 
   return (
     <aside className={`hidden lg:flex flex-shrink-0 w-64 border-r h-screen flex-col ${isDark ? 'bg-[#313636] border-[#7a7282]/20' : 'bg-white border-gray-200'}`}>
-      <div className={`p-6 border-b ${isDark ? 'border-[#7a7282]/20' : 'border-gray-200'}`}>
+      <div className={`p-6 border-b flex-shrink-0 ${isDark ? 'border-[#7a7282]/20' : 'border-gray-200'}`}>
         <Link href="/admin" className={`text-xl tracking-wider transition-colors block`} style={{ fontFamily: "'Montserrat', sans-serif" }}>
           <span style={{ color: '#2D3748', fontWeight: 900 }}>Acarreo</span><span style={{ color: '#38A169', fontWeight: 800 }}>.mx</span>
         </Link>
       </div>
-      <nav className="flex-1 p-4 overflow-y-a_uto">
+      <nav className="flex-1 p-4 overflow-y-auto">
         <ul className="space-y-1">
           {navItems.map((item, index) => (
             <li key={index}>

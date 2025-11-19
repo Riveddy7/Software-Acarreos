@@ -86,9 +86,12 @@ export default function TrucksPage() {
 
   // Filter trucks based on search query
   const filteredTrucks = trucks.filter(truck =>
-    truck.plate.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    truck.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    truck.id.toLowerCase().includes(searchQuery.toLowerCase())
+    (truck.placas?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (truck.model?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (truck.id?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (truck.nombreParaMostrar?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (truck.marca?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+    (truck.transportistaNombre?.toLowerCase() || '').includes(searchQuery.toLowerCase())
   );
 
   const handleSave = async (truckData: Omit<Truck, 'id' | 'createdAt'>) => {
@@ -111,7 +114,7 @@ export default function TrucksPage() {
   const columns: Column<Truck>[] = [
     {
       key: 'id',
-      label: 'ID del Activo',
+      label: 'ID',
       render: (value) => (
         <Link href={`/admin/trucks/${value}`} className="font-mono text-sm text-green-600 hover:text-green-800 hover:underline">
           {value}
@@ -119,27 +122,45 @@ export default function TrucksPage() {
       )
     },
     {
-      key: 'plate',
-      label: 'Placa',
+      key: 'nombreParaMostrar',
+      label: 'Nombre',
       render: (value) => (
         <span className="font-medium text-gray-900">{value}</span>
       )
     },
     {
-      key: 'model',
-      label: 'Modelo'
+      key: 'placas',
+      label: 'Placas',
+      render: (value) => (
+        <span className="font-medium text-gray-900">{value}</span>
+      )
     },
     {
-      key: 'volume',
-      label: 'Volumen (M³)',
+      key: 'transportistaNombre',
+      label: 'Transportista',
       render: (value) => value || 'N/A'
     },
     {
-      key: 'status',
-      label: 'Estado',
+      key: 'tipoCamionNombre',
+      label: 'Tipo',
+      render: (value) => value || 'N/A'
+    },
+    {
+      key: 'marca',
+      label: 'Marca',
+      render: (value) => value || 'N/A'
+    },
+    {
+      key: 'model',
+      label: 'Modelo',
+      render: (value) => value || 'N/A'
+    },
+    {
+      key: 'estatusActivo',
+      label: 'Estatus',
       render: (value) => (
         <StatusBadge
-          status={value === 'IN_SHIPMENT' ? 'EN_TRANSITO' : 'COMPLETED'}
+          status={value ? 'ACTIVO' : 'INACTIVO'}
         />
       )
     },
@@ -185,7 +206,7 @@ export default function TrucksPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="md:col-span-3">
           <SearchInput
-            placeholder="Buscar por placa, modelo o ID..."
+            placeholder="Buscar por placas, nombre, marca, modelo, transportista o ID..."
             value={searchQuery}
             onChange={setSearchQuery}
           />
@@ -227,7 +248,7 @@ export default function TrucksPage() {
         onClose={closeDeleteModal}
         onConfirm={handleDelete}
         title="Eliminar Camión"
-        message={`¿Estás seguro de que quieres eliminar el camión con placa "${selectedTruck?.plate}"? Esta acción no se puede deshacer.`}
+        message={`¿Estás seguro de que quieres eliminar el camión "${selectedTruck?.nombreParaMostrar}" con placas "${selectedTruck?.placas}"? Esta acción no se puede deshacer.`}
         confirmText="Eliminar"
         danger={true}
         loading={deleting}
