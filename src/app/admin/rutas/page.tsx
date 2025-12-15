@@ -29,7 +29,7 @@ function RutaForm({ ruta, onSave, onCancel }: RutaFormProps) {
   const [estatusActivo, setEstatusActivo] = useState(true);
   const [descripcionNotas, setDescripcionNotas] = useState('');
   const [kmlTexto, setKmlTexto] = useState('');
-  
+
   const [lugares, setLugares] = useState<Lugar[]>([]);
   const [tiposAcarreo, setTiposAcarreo] = useState<TipoAcarreo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +41,7 @@ function RutaForm({ ruta, onSave, onCancel }: RutaFormProps) {
           getCollection<Lugar>('lugares'),
           getCollection<TipoAcarreo>('tiposAcarreo')
         ]);
-        
+
         setLugares(lugaresData.filter(l => l.estatusActivo));
         setTiposAcarreo(tiposAcarreoData);
       } catch (error) {
@@ -50,7 +50,7 @@ function RutaForm({ ruta, onSave, onCancel }: RutaFormProps) {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -84,26 +84,36 @@ function RutaForm({ ruta, onSave, onCancel }: RutaFormProps) {
       alert('Por favor, complete todos los campos requeridos.');
       return;
     }
-    
+
     const kmRealesNum = totalKilometrosReales ? parseFloat(totalKilometrosReales) : undefined;
     const kmConciliadosNum = totalKilometrosConciliados ? parseFloat(totalKilometrosConciliados) : undefined;
-    
-    if ((totalKilometrosReales && (kmRealesNum === undefined || isNaN(kmRealesNum))) || 
-        (totalKilometrosConciliados && (kmConciliadosNum === undefined || isNaN(kmConciliadosNum)))) {
+
+    if ((totalKilometrosReales && (kmRealesNum === undefined || isNaN(kmRealesNum))) ||
+      (totalKilometrosConciliados && (kmConciliadosNum === undefined || isNaN(kmConciliadosNum)))) {
       alert('Por favor, ingrese valores válidos para los kilómetros.');
       return;
     }
-    
-    onSave({ 
-      nombreParaMostrar, 
-      idLugarOrigen, 
-      idLugarDestino, 
-      idTipoAcarreo, 
-      totalKilometrosReales: kmRealesNum, 
-      totalKilometrosConciliados: kmConciliadosNum, 
-      estatusActivo, 
-      descripcionNotas, 
-      kmlTexto 
+
+    // Obtener las obras de los lugares seleccionados
+    const lugarOrigen = lugares.find(l => l.id === idLugarOrigen);
+    const lugarDestino = lugares.find(l => l.id === idLugarDestino);
+
+    const idsObrasSet = new Set<string>();
+    if (lugarOrigen?.idObra) idsObrasSet.add(lugarOrigen.idObra);
+    if (lugarDestino?.idObra) idsObrasSet.add(lugarDestino.idObra);
+    const idsObras = Array.from(idsObrasSet);
+
+    onSave({
+      nombreParaMostrar,
+      idsObras,
+      idLugarOrigen,
+      idLugarDestino,
+      idTipoAcarreo,
+      totalKilometrosReales: kmRealesNum,
+      totalKilometrosConciliados: kmConciliadosNum,
+      estatusActivo,
+      descripcionNotas,
+      kmlTexto
     });
   };
 
@@ -270,7 +280,7 @@ export default function RutasPage() {
   const [rutas, setRutas] = useState<Ruta[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRuta, setEditingRuta] = useState<Ruta | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -282,22 +292,22 @@ export default function RutasPage() {
     try {
       setIsLoading(true);
       const rutasData = await getCollection<Ruta>(RUTAS_COLLECTION);
-      
+
       // Fetch related data for denormalization
       const rutasWithRelatedData = await Promise.all(
         rutasData.map(async (ruta) => {
           const [lugarOrigen, lugarDestino, tipoAcarreo] = await Promise.all([
-            getCollection<Lugar>('lugares').then(lugares => 
+            getCollection<Lugar>('lugares').then(lugares =>
               lugares.find(l => l.id === ruta.idLugarOrigen)
             ),
-            getCollection<Lugar>('lugares').then(lugares => 
+            getCollection<Lugar>('lugares').then(lugares =>
               lugares.find(l => l.id === ruta.idLugarDestino)
             ),
-            getCollection<TipoAcarreo>('tiposAcarreo').then(tipos => 
+            getCollection<TipoAcarreo>('tiposAcarreo').then(tipos =>
               tipos.find(t => t.id === ruta.idTipoAcarreo)
             )
           ]);
-          
+
           return {
             ...ruta,
             lugarOrigenNombre: lugarOrigen?.nombreParaMostrar,
@@ -306,7 +316,7 @@ export default function RutasPage() {
           };
         })
       );
-      
+
       setRutas(rutasWithRelatedData);
       setError(null);
     } catch (e) {
@@ -333,7 +343,7 @@ export default function RutasPage() {
 
   const handleDelete = async () => {
     if (!selectedRuta) return;
-    
+
     try {
       setDeleting(true);
       await deleteDocument(RUTAS_COLLECTION, selectedRuta.id);

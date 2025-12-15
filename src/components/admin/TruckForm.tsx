@@ -20,19 +20,19 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
   const [numeroSerie, setNumeroSerie] = useState('');
   const [volume, setVolume] = useState('');
   const [descripcionNotas, setDescripcionNotas] = useState('');
-  
+
   // Foreign keys
   const [idTransportista, setIdTransportista] = useState('');
   const [idTipoCamion, setIdTipoCamion] = useState('');
   const [idClasificacionViaje, setIdClasificacionViaje] = useState('');
   const [idUltimoCamionero, setIdUltimoCamionero] = useState('');
-  
+
   // Options for dropdowns
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
   const [tiposCamion, setTiposCamion] = useState<TipoCamion[]>([]);
   const [clasificacionesViaje, setClasificacionesViaje] = useState<ClasificacionViaje[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]); // Using any for now since we need to import Driver type
-  
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
           getCollection<ClasificacionViaje>('clasificacionesViaje'),
           getCollection<any>('drivers') // Using any for now
         ]);
-        
+
         setTransportistas(transportistasData.filter(t => t.activo));
         setTiposCamion(tiposCamionData.filter(t => t.activo));
         setClasificacionesViaje(clasificacionesViajeData.filter(c => c.activo));
@@ -55,7 +55,7 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, []);
 
@@ -69,7 +69,7 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
       setNumeroSerie(truck.numeroSerie || '');
       setVolume(truck.volume?.toString() || '');
       setDescripcionNotas(truck.descripcionNotas || '');
-      
+
       setIdTransportista(truck.idTransportista || '');
       setIdTipoCamion(truck.idTipoCamion || '');
       setIdClasificacionViaje(truck.idClasificacionViaje || '');
@@ -84,7 +84,7 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
       setNumeroSerie('');
       setVolume('');
       setDescripcionNotas('');
-      
+
       setIdTransportista('');
       setIdTipoCamion('');
       setIdClasificacionViaje('');
@@ -94,19 +94,19 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validar campos requeridos
     if (!placas || !nombreParaMostrar || !idTransportista || !idTipoCamion || !idClasificacionViaje) {
       alert('Por favor, complete todos los campos requeridos.');
       return;
     }
-    
+
     const volumeNum = parseFloat(volume);
     if (volume && (isNaN(volumeNum) || volumeNum <= 0)) {
       alert('Por favor, ingrese un volumen válido.');
       return;
     }
-    
+
     onSave({
       placas,
       nombreParaMostrar,
@@ -119,11 +119,11 @@ export default function TruckForm({ truck, onSave, onCancel }: TruckFormProps) {
       idTransportista,
       idTipoCamion,
       idClasificacionViaje,
-      idUltimoCamionero: idUltimoCamionero || undefined,
+      idUltimoCamionero: idUltimoCamionero || null,
       status: truck?.status || 'AVAILABLE',
-      currentShipmentId: truck?.currentShipmentId,
-      currentDriverId: truck?.currentDriverId,
-      currentDriverName: truck?.currentDriverName
+      currentShipmentId: truck?.currentShipmentId || null,
+      currentDriverId: truck?.currentDriverId || null,
+      currentDriverName: truck?.currentDriverName || null
     });
   };
 

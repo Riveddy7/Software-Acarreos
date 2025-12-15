@@ -82,17 +82,17 @@ export class UniversalScanner {
     return new Promise((resolve, reject) => {
       try {
         const ndef = new (window as any).NDEFReader();
-        
+
         ndef.scan()
           .then(() => {
             ndef.addEventListener("reading", ({ message, serialNumber }: { message: any; serialNumber: string }) => {
               const decoder = new TextDecoder();
               let truckId = '';
-              
+
               for (const record of message.records) {
                 truckId += decoder.decode(record.data);
               }
-              
+
               resolve({
                 type: 'nfc',
                 data: truckId || serialNumber,
@@ -131,14 +131,14 @@ export class UniversalScanner {
   async processScanResult(result: ScanResult): Promise<TruckScanInfo> {
     // Extract truck ID from scan data
     const truckId = this.extractTruckId(result.data);
-    
+
     if (!truckId) {
       throw new Error('No truck ID found in scan result');
     }
 
     // Get truck information from Firestore
     const truckInfo = await this.getTruckInfo(truckId);
-    
+
     return truckInfo;
   }
 
@@ -146,6 +146,12 @@ export class UniversalScanner {
    * Extract truck ID from scan data
    */
   private extractTruckId(scanData: string): string | null {
+    // Validate scanData first
+    if (!scanData || typeof scanData !== 'string') {
+      console.error('Invalid scan data:', scanData);
+      return null;
+    }
+
     // Try different patterns to extract truck ID
     const patterns = [
       /TRUCK_ID_([A-Z0-9]+)/i,
@@ -177,33 +183,107 @@ export class UniversalScanner {
       // Import Firestore functions dynamically to avoid SSR issues
       const { getFirestore, doc, getDoc } = await import('firebase/firestore');
       const db = getFirestore();
-      
+
       // Get truck document
       const truckDoc = await getDoc(doc(db, 'trucks', truckId));
-      
+
       if (!truckDoc.exists()) {
         throw new Error(`Truck with ID ${truckId} not found`);
       }
 
       const truck = truckDoc.data() as Truck;
-      
-      // Get transportista information
-      const transportistaDoc = await getDoc(doc(db, 'transportistas', truck.idTransportista));
-      const transportista = transportistaDoc.exists() 
-        ? transportistaDoc.data() as Transportista 
-        : null;
 
-      // Calculate capacity based on classification
-      const capacity = await this.getTruckCapacity(truck.idClasificacionViaje);
+      // Handle both old and new truck models for backward compatibility
+      const truckData = truck as any;
+
+      // Get transportista information (with fallback for old data)
+      let transportista: Transportista | null = null;
+      if (truckData.idTransportista) {
+        const transportistaDoc = await getDoc(doc(db, 'transportistas', truckData.idTransportista));
+        transportista = transportistaDoc.exists()
+          ? transportistaDoc.data() as Transportista
+          : null;
+      } else {
+        // Create a default transportista for old truck data
+        transportista = {
+          id: 'default',
+          createdAt: truck.createdAt,
+          nombre: 'Transportista no asignado',
+          activo: true
+        };
+      }
+
+      // Calculate capacity
+      let capacity = 0;
+      if (truckData.volume) {
+        capacity = truckData.volume;
+      } else if (truckData.idClasificacionViaje) {
+        // Fallback to classification if volume is missing (though classification might not have it either)
+        capacity = await this.getTruckCapacity(truckData.idClasificacionViaje);
+      } else {
+        // Default capacity
+        capacity = 14; // Changed default to generic 14 or keep 10? User said 10 was wrong (it was a default). Let's stick to reading the volume.
+      }
+
+      // If capacity is effectively 0 after checks, default to 14 (or a reasonable standard) or 0. 
+      // User complaint was about it being 10 when it should be 30. 30 came from volume.
+      if (!capacity) capacity = 14;
+
+      // Get last driver name (with fallback for old data)
+      let lastDriverName = '';
+      if (truckData.ultimoCamioneroNombre) {
+        lastDriverName = truckData.ultimoCamioneroNombre;
+      } else if (truckData.currentDriverName) {
+        lastDriverName = truckData.currentDriverName;
+      }
+
+      // Create a complete truck object with all required fields
+      const completeTruck: Truck = {
+        ...truckData, // Use truckData which is 'truck' cast to any
+        id: truckId, // Explicitly set the ID from the document reference
+        idTransportista: truckData.idTransportista || 'default',
+        idTipoCamion: truckData.idTipoCamion || 'default',
+        idClasificacionViaje: truckData.idClasificacionViaje || 'default',
+        idUltimoCamionero: truckData.idUltimoCamionero,
+        nombreParaMostrar: truckData.nombreParaMostrar || truckData.placas || 'Camión sin nombre',
+        estatusActivo: truckData.estatusActivo !== undefined ? truckData.estatusActivo : true,
+        marca: truckData.marca,
+        numeroSerie: truckData.numeroSerie,
+        placas: truckData.placas || '',
+        descripcionNotas: truckData.descripcionNotas,
+        transportistaNombre: transportista?.nombre,
+        tipoCamionNombre: truckData.tipoCamionNombre,
+        clasificacionViajeNombre: truckData.clasificacionViajeNombre,
+        ultimoCamioneroNombre: lastDriverName,
+        volume: capacity // Ensure capacity is set in the truck object if missing (it's optional in interface but good to have)
+      };
 
       return {
-        truck,
-        transportista: transportista || {} as Transportista,
+        truck: completeTruck,
+        transportista: transportista!,
         capacity,
-        lastDriverName: truck.currentDriverName || truck.ultimoCamioneroNombre
+        lastDriverName
       };
     } catch (error) {
-      throw new Error(`Failed to get truck info: ${error}`);
+      console.error('Error in getTruckInfo:', error);
+      console.error('Error type:', typeof error);
+      console.error('Error instanceof Error:', error instanceof Error);
+
+      let errorMessage: string;
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else {
+        errorMessage = String(error);
+      }
+
+      console.error('Final error message:', errorMessage);
+      console.error('Error message type:', typeof errorMessage);
+
+      // Ensure errorMessage is a string before using in template
+      const safeErrorMessage = typeof errorMessage === 'string' ? errorMessage : String(errorMessage);
+      throw new Error(`Failed to get truck info: ${safeErrorMessage}`);
     }
   }
 
@@ -214,15 +294,15 @@ export class UniversalScanner {
     try {
       const { getFirestore, doc, getDoc } = await import('firebase/firestore');
       const db = getFirestore();
-      
+
       const clasificacionDoc = await getDoc(doc(db, 'clasificacionesViaje', clasificacionId));
-      
+
       if (clasificacionDoc.exists()) {
         const clasificacion = clasificacionDoc.data();
         // Assuming capacity is stored in classification or related data
         return clasificacion.capacidadMaxima || 10; // Default capacity
       }
-      
+
       return 10; // Default capacity if classification not found
     } catch (error) {
       console.error('Error getting truck capacity:', error);

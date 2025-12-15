@@ -7,6 +7,7 @@ import {
   Ruta,
   Truck,
   Material,
+  RequisicionMaterial,
   TruckScanInfo,
   TicketAcarreoData
 } from '@/models/types';
@@ -17,7 +18,9 @@ import { scanner } from '@/lib/operator/scanner';
 import { photoCapture } from '@/lib/operator/photo';
 import { printerManager } from '@/lib/operator/printer';
 import { locationTracker } from '@/lib/operator/location';
+import { getCollection } from '@/lib/firebase/firestore';
 import { Button } from '@/components/ui/Button';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface AcarreoCaptureFormProps {
   obra: Obra;
@@ -25,11 +28,12 @@ interface AcarreoCaptureFormProps {
   onCancel: () => void;
 }
 
-export default function AcarreoCaptureForm({ 
-  obra, 
-  onAcarreoSaved, 
-  onCancel 
+export default function AcarreoCaptureForm({
+  obra,
+  onAcarreoSaved,
+  onCancel
 }: AcarreoCaptureFormProps) {
+  const { userProfile } = useAuth();
   // Form state
   const [formData, setFormData] = useState<Partial<Acarreo>>({
     idObra: obra.id,
@@ -62,6 +66,17 @@ export default function AcarreoCaptureForm({
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [showTicketPreview, setShowTicketPreview] = useState(false);
+  const [showScanner, setShowScanner] = useState(true);
+
+  // New state for refactored workflow
+  const [requisiciones, setRequisiciones] = useState<RequisicionMaterial[]>([]);
+  const [selectedRequisicion, setSelectedRequisicion] = useState<RequisicionMaterial | null>(null);
+  // Fix date initialization to use local time
+  const [customDate, setCustomDate] = useState<string>(() => {
+    const now = new Date();
+    const localNow = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+    return localNow.toISOString().slice(0, 16);
+  });
 
   // Refs
   const formRef = useRef<HTMLFormElement>(null);
@@ -71,23 +86,46 @@ export default function AcarreoCaptureForm({
     initializeServices();
   }, [obra]);
 
+  // Update formData when date changes
+  useEffect(() => {
+    if (customDate) {
+      setFormData(prev => ({
+        ...prev,
+        fechaHora: new Date(customDate) as any
+      }));
+    }
+  }, [customDate]);
+
   const loadData = async () => {
     try {
       // Load rutas for this obra
       const rutasData = await loadRutasForObra(obra.id);
       setRutas(rutasData);
 
+      // Load requisitions
+      const requisicionesData = await loadRequisicionesForObra(obra.id);
+      setRequisiciones(requisicionesData);
+
       // Load materials
       const materialesData = await loadMateriales();
       setMateriales(materialesData);
 
       // Get current location
-      const currentLocation = await locationTracker.getCurrentLocation();
-      setLocation(currentLocation);
+      try {
+        const currentLocation = await locationTracker.getCurrentLocation();
+        setLocation(currentLocation);
+      } catch (error) {
+        console.warn('Could not get location:', error);
+        // Don't block loading, just continue without location
+      }
 
       // Get printer status
-      const status = await printerManager.getPrinterStatus();
-      setPrinterStatus(status);
+      try {
+        const status = await printerManager.getPrinterStatus();
+        setPrinterStatus(status);
+      } catch (error) {
+        console.warn('Could not get printer status:', error);
+      }
     } catch (error) {
       console.error('Error loading data:', error);
       setErrors(['Error al cargar los datos iniciales']);
@@ -98,10 +136,10 @@ export default function AcarreoCaptureForm({
     try {
       // Initialize scanner
       await scanner.detectAvailableTechnologies();
-      
+
       // Initialize location tracking
       await locationTracker.validateLocationPermission();
-      
+
       // Detect printers
       await printerManager.detectPrinters();
     } catch (error) {
@@ -111,23 +149,70 @@ export default function AcarreoCaptureForm({
 
   const loadRutasForObra = async (obraId: string): Promise<Ruta[]> => {
     // Mock implementation - would load from Firestore
-    return [];
+    // Ideally this should use getCollection filter logic too or a dedicated query
+    // For now we assume this function (mocked or real elsewhere) is doing its job or needs refactor too.
+    // Given the prompt didn't ask to rewrite this func's logic entirely but the flow, I'll keep it as placeholder 
+    // or if I see it's mocked, I should implement it better if possible.
+    // The previous code had it as a mock returning empty array. I should probably try to fetch them.
+    try {
+      const allRutas = await getCollection<Ruta>('rutas');
+      const allObraRutas = allRutas.filter(r => r.idsObras?.includes(obraId) && r.estatusActivo);
+      // Filter by 'rutas' collection actually having 'idObra'
+      return allObraRutas;
+    } catch (e) {
+      console.error("Error loading routes", e);
+      return [];
+    }
   };
 
   const loadMateriales = async (): Promise<Material[]> => {
-    // Mock implementation - would load from Firestore
-    return [];
+    try {
+      return await getCollection<Material>('materials');
+    } catch (e) {
+      console.error("Error loading materials", e);
+      return [];
+    }
+  };
+
+  const loadRequisicionesForObra = async (obraId: string) => {
+    try {
+      const allRequisiciones = await getCollection<RequisicionMaterial>('requisiciones-material');
+      // Filter by obra
+      // Also potentially filter by status (e.g., authorized only)
+      return allRequisiciones.filter(req => req.idObra === obraId);
+    } catch (error) {
+      console.error('Error loading requisitions:', error);
+      return [];
+    }
+  };
+
+  const handleRequisicionChange = (reqId: string) => {
+    const req = requisiciones.find(r => r.id === reqId) || null;
+    setSelectedRequisicion(req);
+    if (req) {
+      setFormData(prev => ({
+        ...prev,
+        idRequisicionAfectada: req.id
+      }));
+    }
   };
 
   const handleTruckScan = async (truckInfo: TruckScanInfo) => {
+    console.log('handleTruckScan called with:', truckInfo);
     setScannedTruck(truckInfo);
+    setShowScanner(false);
+
+    // NEW logic: Set driver name from last driver
+    const lastDriver = truckInfo.lastDriverName || '';
+
     setFormData(prev => ({
       ...prev,
       idCamion: truckInfo.truck.id,
       nombreMostrarCamion: truckInfo.truck.nombreParaMostrar,
       idTransportista: truckInfo.truck.idTransportista,
       // Calculate volume based on 50% default
-      cantidadCapturada: acarreoValidator.calcularVolumenDesdePorcentaje(50, truckInfo.capacity)
+      cantidadCapturada: acarreoValidator.calcularVolumenDesdePorcentaje(50, truckInfo.capacity),
+      nombreCamionero: lastDriver
     }));
 
     // Validate material compatibility
@@ -188,7 +273,7 @@ export default function AcarreoCaptureForm({
   };
 
   const handlePorcentajeChange = (porcentaje: number) => {
-    const volumen = scannedTruck 
+    const volumen = scannedTruck
       ? acarreoValidator.calcularVolumenDesdePorcentaje(porcentaje, scannedTruck.capacity)
       : 0;
 
@@ -230,14 +315,14 @@ export default function AcarreoCaptureForm({
       const result = await photoCapture.captureFromCamera();
       setPhotoResult(result);
       setShowPhotoModal(false);
-      
+
       // Upload photo
       const filename = photoCapture.generateFilename('acarreo');
       const photoUrl = await photoCapture.uploadPhoto(
         result.compressedFile,
         `acarreos/${obra.id}/${filename}`
       );
-      
+
       setFormData(prev => ({
         ...prev,
         urlFoto: photoUrl
@@ -253,14 +338,14 @@ export default function AcarreoCaptureForm({
       const result = await photoCapture.selectFromGallery();
       setPhotoResult(result);
       setShowPhotoModal(false);
-      
+
       // Upload photo
       const filename = photoCapture.generateFilename('acarreo');
       const photoUrl = await photoCapture.uploadPhoto(
         result.compressedFile,
         `acarreos/${obra.id}/${filename}`
       );
-      
+
       setFormData(prev => ({
         ...prev,
         urlFoto: photoUrl
@@ -271,47 +356,22 @@ export default function AcarreoCaptureForm({
     }
   };
 
-  const findRequisitionMatch = async () => {
-    if (!formData.idMaterial || !scannedTruck) return;
-
-    try {
-      // Load requisitions and lines
-      const requisitions = await loadRequisicionesForObra(obra.id);
-      const lines = await loadLineasRequisicion();
-      
-      const match = await acarreoValidator.encontrarRequisicionAdecuada(
-        formData,
-        requisitions,
-        lines
-      );
-      
-      setRequisitionMatch(match);
-      
-      if (match.requisicion) {
-        setFormData(prev => ({
-          ...prev,
-          idRequisicionAfectada: match.requisicion?.id,
-          idLineaRequisicionAfectada: match.linea?.id
-        }));
-      }
-    } catch (error) {
-      console.error('Error finding requisition match:', error);
-    }
-  };
-
-  const loadRequisicionesForObra = async (obraId: string) => {
-    // Mock implementation
-    return [];
-  };
-
-  const loadLineasRequisicion = async () => {
-    // Mock implementation
-    return [];
-  };
-
   const validateAndSave = async () => {
-    if (!selectedRuta || !scannedTruck || !selectedMaterial) {
-      setErrors(['Complete todos los campos requeridos']);
+    // Debug info
+    console.log('--- VALIDATE AND SAVE START ---');
+    console.log('Current scannedTruck:', scannedTruck);
+    console.log('Current formData:', formData);
+    console.log('Check conditions:', {
+      hasRuta: !!selectedRuta,
+      hasTruck: !!scannedTruck,
+      hasIdCamion: !!formData.idCamion,
+      hasMaterial: !!selectedMaterial
+    });
+
+    // Modified check: allow if scannedTruck is missing BUT formData has idCamion
+    if (!selectedRuta || (!scannedTruck && !formData.idCamion) || !selectedMaterial) {
+      console.error('Validation failed: Missing required fields');
+      setErrors(['Complete todos los campos requeridos (Ruta, Camión, Material)']);
       return;
     }
 
@@ -323,19 +383,40 @@ export default function AcarreoCaptureForm({
       // Complete form data
       const completeFormData: Partial<Acarreo> = {
         ...formData,
+        idUsuario: userProfile?.id,
+        nombreMostrarUsuario: userProfile?.username || 'Operador',
+        // Priority: 1. scannedTruck.id, 2. formData.idCamion
+        idCamion: scannedTruck?.truck?.id || formData.idCamion,
+        nombreMostrarCamion: scannedTruck?.truck?.nombreParaMostrar || formData.nombreMostrarCamion || '',
         fechaHoraCaptura: new Date() as any,
         latitudUbicacionCaptura: location?.latitude,
         longitudUbicacionCaptura: location?.longitude,
       };
 
+      console.log('completeFormData constructed:', completeFormData);
+
+      // Construct a temporary truck object if scannedTruck is missing but ID is present
+      const truckForValidation: Truck = scannedTruck?.truck || {
+        id: formData.idCamion!,
+        nombreParaMostrar: formData.nombreMostrarCamion || 'Camión',
+        placas: '',
+        estatusActivo: true,
+        // Add other required fields with defaults if necessary for validation
+        idTransportista: (formData as any).idTransportista || '',
+        idTipoCamion: '',
+        idClasificacionViaje: '',
+        status: 'AVAILABLE'
+      } as Truck;
+
       // Validate complete form
+      // Note: We might want to pass empty arrays for requisition checks if not enforcing matching logic yet
       const validation = await acarreoValidator.validarAcarreoCompleto(
         completeFormData,
         selectedRuta,
-        scannedTruck.truck,
+        truckForValidation, // Use the fallback truck object
         selectedMaterial,
-        [],
-        []
+        [], // requisitions
+        [] // lines
       );
 
       if (!validation.isValid) {
@@ -357,8 +438,42 @@ export default function AcarreoCaptureForm({
   };
 
   const saveAcarreo = async (acarreo: Acarreo): Promise<Acarreo> => {
-    // Mock implementation - would save to Firestore
-    return acarreo;
+    try {
+      const { getFirestore, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+      const db = getFirestore();
+
+      // Prepare data for saving
+      const dataToSave = {
+        ...acarreo,
+        createdAt: serverTimestamp(),
+        estatusConciliado: false,
+        // Link to requisition if matched
+        idRequisicion: requisitionMatch?.requisicion?.id || null,
+        idLineaRequisicion: requisitionMatch?.linea?.id || null,
+        folioRequisicion: (requisitionMatch?.requisicion as any)?.folio || (requisitionMatch?.requisicion as any)?.folioPublico || null
+      };
+
+      // Clean undefined fields to avoid Firestore errors
+      Object.keys(dataToSave).forEach(key => {
+        if ((dataToSave as any)[key] === undefined) {
+          delete (dataToSave as any)[key];
+        }
+      });
+
+      console.log('Saving acarreo to Firestore:', dataToSave);
+
+      const docRef = await addDoc(collection(db, 'acarreos'), dataToSave);
+
+      console.log('Acarreo saved with ID:', docRef.id);
+
+      return {
+        ...acarreo,
+        id: docRef.id
+      } as Acarreo;
+    } catch (error) {
+      console.error('Error saving to Firestore:', error);
+      throw error;
+    }
   };
 
   const generateAndPrintTicket = async () => {
@@ -367,7 +482,7 @@ export default function AcarreoCaptureForm({
     try {
       const ticketData: TicketAcarreoData = {
         id: 'TEMP_ID', // Would be generated
-        fechaHora: (formData.fechaHora as any)?.toDate?.() || new Date(),
+        fechaHora: (formData.fechaHora as any)?.toDate?.() || new Date(customDate),
         obraNombre: obra.nombreParaMostrar,
         rutaNombre: selectedRuta.nombreParaMostrar,
         materialNombre: selectedMaterial.nombreParaMostrar,
@@ -388,7 +503,7 @@ export default function AcarreoCaptureForm({
 
       // Print ticket
       const printed = await printerManager.printTicket(ticketData);
-      
+
       if (printed) {
         // Save and continue
         await validateAndSave();
@@ -408,7 +523,7 @@ export default function AcarreoCaptureForm({
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">Capturar Acarreo</h1>
-            <p className="text-sm text-gray-600">{obra.nombreParaMostrar}</p>
+            <p className="text-sm text-gray-800">{obra.nombreParaMostrar}</p>
           </div>
           <Button onClick={onCancel} variant="secondary" size="sm">
             Cancelar
@@ -441,38 +556,47 @@ export default function AcarreoCaptureForm({
           </div>
         )}
 
-        {/* Truck Scanner */}
+        {/* 1. Selección de Requisición */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4">1. Escanear Camión</h3>
-          <TruckScanner
-            onTruckScanned={handleTruckScan}
-            onError={(error: any) => setErrors([error])}
-          />
-          
-          {scannedTruck && (
-            <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-              <p className="text-sm font-medium text-green-800">
-                Camión escaneado: {scannedTruck.truck.nombreParaMostrar}
-              </p>
-              <p className="text-xs text-green-600">
-                Placas: {scannedTruck.truck.placas} | 
-                Capacidad: {scannedTruck.capacity} m³
-              </p>
-            </div>
-          )}
+          <h3 className="font-semibold text-gray-900 mb-4">1. Requisición</h3>
+          <select
+            value={selectedRequisicion?.id || ''}
+            onChange={(e) => handleRequisicionChange(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
+          >
+            <option value="">Seleccionar requisición (Opcional)...</option>
+            {requisiciones.map(req => (
+              <option key={req.id} value={req.id}>
+                {req.folioOrdenCompraExterno || req.descripcionCorta || `Requisición del ${(req.fechaSolicitud as any)?.toDate?.().toLocaleDateString() || req.createdAt}`}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-gray-700 mt-2">
+            Selecciona la requisición a la que pertenece este acarreo.
+          </p>
         </div>
 
-        {/* Route Selection */}
+        {/* 2. Fecha y Hora */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4">2. Seleccionar Ruta</h3>
+          <h3 className="font-semibold text-gray-900 mb-4">2. Fecha y Hora</h3>
+          <input
+            type="datetime-local"
+            value={customDate}
+            onChange={(e) => setCustomDate(e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
+          />
+        </div>
+
+        {/* 3. Selección de Ruta */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 className="font-semibold text-gray-900 mb-4">3. Seleccionar Ruta</h3>
           <select
             value={selectedRuta?.id || ''}
             onChange={(e) => {
               const ruta = rutas.find(r => r.id === e.target.value);
               if (ruta) handleRutaChange(ruta);
             }}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={!scannedTruck}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
           >
             <option value="">Seleccionar ruta...</option>
             {rutas.map(ruta => (
@@ -483,18 +607,18 @@ export default function AcarreoCaptureForm({
           </select>
         </div>
 
-        {/* Type Selection */}
+        {/* 4. Tipo de Acarreo */}
         {selectedRuta && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">3. Tipo de Acarreo</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">4. Tipo de Acarreo</h3>
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
                 onClick={() => handleTipoChange('carga', !formData.esCarga)}
                 className={`
                   p-4 rounded-lg border-2 font-medium transition-all
-                  ${formData.esCarga 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                  ${formData.esCarga
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 hover:border-gray-300 text-gray-700'
                   }
                   ${selectedRuta.tipoAcarreoNombre?.toLowerCase().includes('material traído a obra') && !formData.esCarga
@@ -518,8 +642,8 @@ export default function AcarreoCaptureForm({
                 onClick={() => handleTipoChange('tiro', !formData.esTiro)}
                 className={`
                   p-4 rounded-lg border-2 font-medium transition-all
-                  ${formData.esTiro 
-                    ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                  ${formData.esTiro
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
                     : 'border-gray-200 hover:border-gray-300 text-gray-700'
                   }
                   ${selectedRuta.tipoAcarreoNombre?.toLowerCase().includes('material sacado de obra') && !formData.esTiro
@@ -541,17 +665,78 @@ export default function AcarreoCaptureForm({
           </div>
         )}
 
-        {/* Material Selection */}
+        {/* 5. Escanear Camión (Mostrar info después de escanear) */}
+        <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <h3 className="font-semibold text-gray-900 mb-4 flex justify-between items-center">
+            <span>5. Escanear Camión</span>
+            {!showScanner && scannedTruck && (
+              <Button
+                onClick={() => {
+                  setShowScanner(true);
+                  setScannedTruck(null);
+                  setFormData(prev => ({
+                    ...prev,
+                    idCamion: '',
+                    cantidadCapturada: 0,
+                    porcentajeCargaCamion: 0
+                  }));
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                Volver a escanear
+              </Button>
+            )}
+          </h3>
+
+          {showScanner ? (
+            <TruckScanner
+              onTruckScanned={handleTruckScan}
+              onError={(error: any) => setErrors([error])}
+            />
+          ) : (
+            scannedTruck && (
+              <div className="p-4 bg-green-50 border border-green-200 rounded-lg bg-green-50">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <p className="font-bold text-green-900 text-lg">
+                      {scannedTruck.truck.nombreParaMostrar}
+                    </p>
+                    <p className="text-sm text-green-700 mt-1">
+                      <span className="font-medium">Transportista:</span> {scannedTruck.truck.transportistaNombre || 'N/A'}
+                    </p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm text-green-700">
+                  <div>
+                    <span className="font-medium block">Placas:</span>
+                    {scannedTruck.truck.placas}
+                  </div>
+                  <div>
+                    <span className="font-medium block">Capacidad:</span>
+                    {scannedTruck.capacity} m³
+                  </div>
+                  <div className="col-span-2">
+                    <span className="font-medium block">Último Conductor:</span>
+                    {scannedTruck.lastDriverName || 'No registrado'}
+                  </div>
+                </div>
+              </div>
+            )
+          )}
+        </div>
+
+        {/* 6. Seleccionar Material */}
         {scannedTruck && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">4. Seleccionar Material</h3>
+            <h3 className="font-semibold text-gray-900 mb-4">6. Seleccionar Material</h3>
             <select
               value={selectedMaterial?.id || ''}
               onChange={(e) => {
                 const material = materiales.find(m => m.id === e.target.value);
                 if (material) handleMaterialChange(material);
               }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
             >
               <option value="">Seleccionar material...</option>
               {materiales.map(material => (
@@ -563,67 +748,55 @@ export default function AcarreoCaptureForm({
           </div>
         )}
 
-        {/* Volume Input */}
+        {/* 7. Porcentaje y Volumen */}
         {scannedTruck && selectedMaterial && (
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h3 className="font-semibold text-gray-900 mb-4">5. Volumen</h3>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Porcentaje de Carga
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.porcentajeCargaCamion}
-                  onChange={(e) => handlePorcentajeChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div className="text-xs text-gray-500 mt-1">%</div>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Volumen (m³)
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  max={scannedTruck.capacity}
-                  step="0.1"
-                  value={formData.cantidadCapturada}
-                  onChange={(e) => handleVolumenChange(Number(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-                <div className="text-xs text-gray-500 mt-1">
-                  Capacidad: {scannedTruck.capacity} m³
-                </div>
-              </div>
+            <h3 className="font-semibold text-gray-900 mb-4">7. Volumen</h3>
+
+            <label className="block text-sm font-bold text-gray-900 mb-2">
+              Porcentaje de Carga: {formData.porcentajeCargaCamion}%
+            </label>
+            <div className="grid grid-cols-4 gap-2 mb-4">
+              {[25, 50, 75, 100].map(p => (
+                <Button
+                  key={p}
+                  // Using a variation of the button style or custom class if variant doesn't match exactly
+                  className={`border ${formData.porcentajeCargaCamion === p ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
+                  onClick={() => handlePorcentajeChange(p)}
+                  size="sm"
+                >
+                  {p}%
+                </Button>
+              ))}
             </div>
 
-            {/* Requisition Match */}
-            {requisitionMatch && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm font-medium text-blue-800">
-                  Requisición afectada: {requisitionMatch.requisicion?.fechaSolicitud ? `Requisición del ${requisitionMatch.requisicion.fechaSolicitud.toDate().toLocaleDateString()}` : 'Requisición'}
-                </p>
-                <p className="text-xs text-blue-600">
-                  {requisitionMatch.motivo}
-                </p>
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-gray-900 mb-2">
+                Volumen Calculado (m³)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max={scannedTruck.capacity}
+                step="0.1"
+                value={formData.cantidadCapturada}
+                onChange={(e) => handleVolumenChange(Number(e.target.value))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
+              />
+              <div className="text-xs text-gray-700 mt-1">
+                Capacidad Máxima: {scannedTruck.capacity} m³
               </div>
-            )}
+            </div>
           </div>
         )}
 
-        {/* Additional Fields */}
+        {/* 8. Información Adicional */}
         <div className="bg-white rounded-lg border border-gray-200 p-4">
-          <h3 className="font-semibold text-gray-900 mb-4">6. Información Adicional</h3>
-          
+          <h3 className="font-semibold text-gray-900 mb-4">8. Información Adicional</h3>
+
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-900 mb-2">
                 Nombre del Camionero
               </label>
               <input
@@ -631,26 +804,26 @@ export default function AcarreoCaptureForm({
                 value={formData.nombreCamionero || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, nombreCamionero: e.target.value }))}
                 placeholder={scannedTruck?.lastDriverName || 'Nombre del camionero'}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-900 mb-2">
                 Notas (opcional)
               </label>
               <textarea
                 value={formData.nota || ''}
                 onChange={(e) => setFormData(prev => ({ ...prev, nota: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-600"
                 placeholder="Notas adicionales..."
               />
             </div>
 
             {/* Photo */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-900 mb-2">
                 Foto (opcional)
               </label>
               <div className="flex items-center space-x-4">
@@ -661,11 +834,11 @@ export default function AcarreoCaptureForm({
                 >
                   {photoResult ? 'Cambiar Foto' : 'Tomar Foto'}
                 </Button>
-                
+
                 {photoResult && (
                   <div className="flex items-center">
-                    <img 
-                      src={photoResult.compressedUrl} 
+                    <img
+                      src={photoResult.compressedUrl}
                       alt="Foto del acarreo"
                       className="w-16 h-16 object-cover rounded border border-gray-200"
                     />
@@ -683,14 +856,14 @@ export default function AcarreoCaptureForm({
       {/* Footer Actions */}
       <div className="bg-white border-t border-gray-200 p-4">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-800">
             {printerStatus?.connected ? (
               <span className="text-green-600">✓ Impresora conectada</span>
             ) : (
               <span className="text-red-600">⚠ Sin impresora</span>
             )}
           </div>
-          
+
           <div className="flex space-x-3">
             <Button
               onClick={validateAndSave}
@@ -699,7 +872,7 @@ export default function AcarreoCaptureForm({
             >
               {loading ? 'Guardando...' : 'Guardar'}
             </Button>
-            
+
             {printerStatus?.connected && (
               <Button
                 onClick={generateAndPrintTicket}

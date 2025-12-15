@@ -31,26 +31,19 @@ export class AcarreoValidator {
     // For now, we'll assume the route has a tipoAcarreoNombre property
     const tipoAcarreoNombre = ruta.tipoAcarreoNombre?.toLowerCase() || '';
 
-    switch (tipoAcarreoNombre) {
-      case 'material traído a obra':
-        if (tipoEvento === 'carga') {
-          errors.push('Para "Material traído a obra" solo se permite CARGA');
-        }
-        break;
-      
-      case 'material sacado de obra':
-        if (tipoEvento === 'tiro') {
-          errors.push('Para "Material sacado de obra" solo se permite TIRO');
-        }
-        break;
-      
-      case 'movimiento interno de material':
-        // Both options are allowed for movimiento interno
-        warnings.push('Para "Movimiento interno" ambos tipos están permitidos, pero solo la CARGA se considera para conciliación');
-        break;
-      
-      default:
-        warnings.push(`Tipo de acarreo no reconocido: ${tipoAcarreoNombre}`);
+    if (tipoAcarreoNombre.includes('traído') || tipoAcarreoNombre.includes('traido') || tipoAcarreoNombre.includes('import')) {
+      if (tipoEvento === 'carga') {
+        errors.push('Para "Material traído a obra" solo se permite CARGA');
+      }
+    } else if (tipoAcarreoNombre.includes('sacado') || tipoAcarreoNombre.includes('export')) {
+      if (tipoEvento === 'tiro') {
+        errors.push('Para "Material sacado de obra" solo se permite TIRO');
+      }
+    } else if (tipoAcarreoNombre.includes('interno') || tipoAcarreoNombre.includes('movimiento')) {
+      warnings.push('Para "Movimiento interno" ambos tipos están permitidos, pero solo la CARGA se considera para conciliación');
+    } else {
+      // If it doesn't match known types, just warn but allow
+      // warnings.push(`Tipo de acarreo no reconocido: ${tipoAcarreoNombre}`);
     }
 
     return {
@@ -72,22 +65,24 @@ export class AcarreoValidator {
     const clasificacionNombre = camion.clasificacionViajeNombre?.toLowerCase() || '';
 
     // Basic compatibility rules
-    if (material.nombreParaMostrar.toLowerCase().includes('agua') || 
-        material.nombreParaMostrar.toLowerCase().includes('water')) {
-      
-      if (tipoCamionNombre.includes('volteo') || 
-          tipoCamionNombre.includes('dump') ||
-          clasificacionNombre.includes('volteo')) {
+    if (material.nombreParaMostrar.toLowerCase().includes('agua') ||
+      material.nombreParaMostrar.toLowerCase().includes('water')) {
+
+      if (tipoCamionNombre.includes('volteo') ||
+        tipoCamionNombre.includes('dump') ||
+        clasificacionNombre.includes('volteo')) {
         errors.push('Un camión volteo no puede acarrear agua');
       }
     }
 
-    // Check if material is compatible with truck type
+    // Compatibility check disabled as per user request
+    /*
     if (material.idClasificacionMaterial && camion.idTipoCamion) {
       // This would require additional lookup in Firestore
       // For now, we'll add a warning
       warnings.push('Verificar compatibilidad específica entre material y tipo de camión');
     }
+    */
 
     return {
       isValid: errors.length === 0,
@@ -169,9 +164,9 @@ export class AcarreoValidator {
     lineasValidas.sort((a: LineaRequisicionMaterial, b: LineaRequisicionMaterial) => {
       const reqA = requisicionesValidas.find((req: RequisicionMaterial) => req.id === a.idRequisicionMaterial);
       const reqB = requisicionesValidas.find((req: RequisicionMaterial) => req.id === b.idRequisicionMaterial);
-      
+
       if (!reqA || !reqB) return 0;
-      
+
       return reqA.fechaSolicitud.toMillis() - reqB.fechaSolicitud.toMillis();
     });
 
@@ -190,8 +185,8 @@ export class AcarreoValidator {
     }
 
     // Check if the current volume fits in the available balance
-    const saldoDisponible = (lineaSeleccionada.cantidadAutorizada || lineaSeleccionada.cantidad) - 
-                         (lineaSeleccionada.cantidadEntregada || 0);
+    const saldoDisponible = (lineaSeleccionada.cantidadAutorizada || lineaSeleccionada.cantidad) -
+      (lineaSeleccionada.cantidadEntregada || 0);
 
     if (acarreoData.cantidadCapturada && acarreoData.cantidadCapturada > saldoDisponible) {
       return {
@@ -270,8 +265,11 @@ export class AcarreoValidator {
     // Validate date
     if (acarreoData.fechaHora) {
       const now = new Date();
-      const acarreoDate = acarreoData.fechaHora.toDate();
-      
+      // Handle both Firestore Timestamp and JS Date
+      const acarreoDate = (typeof acarreoData.fechaHora.toDate === 'function')
+        ? acarreoData.fechaHora.toDate()
+        : new Date(acarreoData.fechaHora as any); // Cast to any to handle the mix
+
       if (acarreoDate > now) {
         warnings.push('La fecha del acarreo es futura');
       }
@@ -320,9 +318,10 @@ export class AcarreoValidator {
     allWarnings.push(...compatibilidadValidacion.warnings);
 
     // Validate volume vs capacity
-    if (acarreoData.cantidadCapturada && camion.idClasificacionViaje) {
-      // Get capacity from classification (would need to be populated)
-      const capacidad = await this.getCapacidadCamion(camion.idClasificacionViaje);
+    if (acarreoData.cantidadCapturada) {
+      // Use truck volume if available, or fetch classification, or use scanned info if passed (camion object might have it)
+      const capacidad = camion.volume || (camion.idClasificacionViaje ? await this.getCapacidadCamion(camion.idClasificacionViaje) : 20);
+
       const volumenValidacion = this.validarVolumen(acarreoData.cantidadCapturada, capacidad);
       allErrors.push(...volumenValidacion.errors);
       allWarnings.push(...volumenValidacion.warnings);
@@ -346,14 +345,14 @@ export class AcarreoValidator {
     try {
       const { getFirestore, doc, getDoc } = await import('firebase/firestore');
       const db = getFirestore();
-      
+
       const clasificacionDoc = await getDoc(doc(db, 'clasificacionesViaje', clasificacionId));
-      
+
       if (clasificacionDoc.exists()) {
         const clasificacion = clasificacionDoc.data();
         return clasificacion.capacidadMaxima || 10; // Default capacity
       }
-      
+
       return 10; // Default capacity if classification not found
     } catch (error) {
       console.error('Error getting truck capacity:', error);

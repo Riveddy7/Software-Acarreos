@@ -39,22 +39,22 @@ export interface Truck extends BaseDoc {
   model: string; // Modelo VARCHAR
   volume?: number; // Volumetric capacity in M3 (optional for backward compatibility)
   status: TruckStatus;
-  currentShipmentId?: string; // Optional, only if IN_SHIPMENT
-  currentDriverId?: string;   // Optional, only if IN_SHIPMENT
-  currentDriverName?: string; // Optional, denormalized driver name
-  
+  currentShipmentId?: string | null; // Optional, only if IN_SHIPMENT
+  currentDriverId?: string | null;   // Optional, only if IN_SHIPMENT
+  currentDriverName?: string | null; // Optional, denormalized driver name
+
   // Nuevos campos requeridos
   idTransportista: string; // FK (NN)
   idTipoCamion: string; // FK (NN)
   idClasificacionViaje: string; // FK (NN)
-  idUltimoCamionero?: string; // FK (opcional)
+  idUltimoCamionero?: string | null; // FK (opcional)
   nombreParaMostrar: string; // VARCHAR (NN)
   estatusActivo: boolean; // BOOLEAN (NN)
   marca?: string; // VARCHAR
   numeroSerie?: string; // VARCHAR
   placas: string; // VARCHAR (NN) - reemplaza a plate
   descripcionNotas?: string; // TEXT
-  
+
   // Campos desnormalizados para mostrar en la tabla
   transportistaNombre?: string;
   tipoCamionNombre?: string;
@@ -78,7 +78,7 @@ export interface Material extends BaseDoc {
   descripcionNotas?: string; // TEXT
   idClasificacionMaterial: string; // FK (NN)
   idUnidad: string; // FK (NN)
-  
+
   // Campos desnormalizados
   clasificacionMaterialNombre?: string;
   unidadNombre?: string;
@@ -298,7 +298,7 @@ export interface Obra extends BaseDoc {
   descripcionNotas?: string; // TEXT
   empresaContratante?: string; // VARCHAR
   idEmpresaInterna: string; // FK (NN)
-  
+
   // Campos desnormalizados
   clienteNombre?: string;
   empresaInternaNombre?: string;
@@ -312,7 +312,7 @@ export interface Lugar extends BaseDoc {
   descripcionNotas?: string; // TEXT
   latitud?: number;
   longitud?: number;
-  
+
   // Campos desnormalizados
   obraNombre?: string;
 }
@@ -325,6 +325,7 @@ export interface TipoAcarreo extends BaseDoc {
 // Ruta
 export interface Ruta extends BaseDoc {
   nombreParaMostrar: string; // NN
+  idsObras: string[]; // FKs (Array of Obra IDs)
   idLugarOrigen: string; // FK (NN)
   idLugarDestino: string; // FK (NN)
   idTipoAcarreo: string; // FK (NN)
@@ -333,7 +334,7 @@ export interface Ruta extends BaseDoc {
   estatusActivo: boolean; // NN
   descripcionNotas?: string; // TEXT
   kmlTexto?: string; // TEXT
-  
+
   // Campos desnormalizados
   lugarOrigenNombre?: string;
   lugarDestinoNombre?: string;
@@ -347,7 +348,7 @@ export interface Operador extends BaseDoc {
   apellidoMaterno?: string;
   nombres: string; // NN
   nombreParaMostrar?: string;
-  
+
   // Campos desnormalizados
   transportistaNombre?: string;
 }
@@ -374,6 +375,7 @@ export interface Acarreo extends BaseDoc {
   idCamion: string; // FK (NN)
   nombreMostrarCamion: string; // NN
   idMaterial: string; // FK (NN)
+  nombreMostrarMaterial?: string; // NN - Added for consistency
   nombreMaterial: string; // NN
   nombreCamionero?: string; // VARCHAR
   porcentajeCargaCamion: number; // INTEGER (NN)
@@ -402,7 +404,7 @@ export interface RequisicionMaterial extends BaseDoc {
   descripcionNotas?: string; // TEXT
   facturaSerieFolio?: string; // VARCHAR
   folioOrdenCompraExterno?: string; // VARCHAR
-  
+
   // Campos desnormalizados
   obraNombre?: string;
   proveedorNombre?: string;
@@ -420,7 +422,7 @@ export interface LineaRequisicionMaterial extends BaseDoc {
   precioUnitario?: number;
   subtotal?: number;
   notas?: string;
-  
+
   // Campos desnormalizados
   materialNombre?: string;
   requisicionMaterialFolio?: string;

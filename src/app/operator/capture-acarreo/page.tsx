@@ -37,11 +37,16 @@ export default function CaptureAcarreoPage() {
 
   const handleAcarreoSaved = (acarreo: any) => {
     // Show success message
-    alert('Acarreo guardado exitosamente');
-    
-    // Option: Go back to obra selection or continue with new acarreo
-    // For now, we'll go back to obra selection
-    router.push('/operator/obra-selection');
+    // alert('Acarreo guardado exitosamente'); // Removed alert to make it smoother
+
+    // Redirect to ticket view
+    if (acarreo && acarreo.id) {
+      router.push(`/operator/ticket/${acarreo.id}`);
+    } else {
+      console.error('No ID returned after save, cannot redirect to ticket');
+      // Fallback
+      router.push('/operator/obra-selection');
+    }
   };
 
   const handleCancel = () => {
@@ -120,7 +125,7 @@ export default function CaptureAcarreoPage() {
                 Obra: {selectedObra.nombreParaMostrar}
               </p>
             </div>
-            
+
             <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/operator/obra-selection')}
@@ -128,7 +133,7 @@ export default function CaptureAcarreoPage() {
               >
                 Cambiar Obra
               </button>
-              
+
               <button
                 onClick={() => {
                   // Clear session and go to login
