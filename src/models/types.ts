@@ -396,7 +396,9 @@ export interface Acarreo extends BaseDoc {
 // Requisición de Material
 export interface RequisicionMaterial extends BaseDoc {
   fechaSolicitud: Timestamp; // DATE (NN)
-  estatusAutorizado: boolean; // BOOLEAN (true=autorizado, false=pendiente)
+  estatus: number; // 0=Revision, 1=Autorizada, 2=Cancelada, 3=Parcial, 4=CerradaParcial, 5=Completada
+  // Deprecating estatusAutorizado in favor of granular estatus
+  estatusAutorizado?: boolean;
   idObra: string; // FK (NN)
   idProveedor: string; // FK (NN)
   idTransportista: string; // FK (NN)
@@ -404,6 +406,10 @@ export interface RequisicionMaterial extends BaseDoc {
   descripcionNotas?: string; // TEXT
   facturaSerieFolio?: string; // VARCHAR
   folioOrdenCompraExterno?: string; // VARCHAR
+
+  // Progress Tracking (Denormalized)
+  cantidadTotal?: number;
+  cantidadEntregada?: number;
 
   // Campos desnormalizados
   obraNombre?: string;
@@ -417,8 +423,9 @@ export interface LineaRequisicionMaterial extends BaseDoc {
   idMaterial: string; // FK (NN)
   cantidad: number; // NN
   cantidadAutorizada?: number;
-  cantidadEntregada?: number;
-  cantidadPendiente?: number;
+  cantidadEntregada: number; // NN - Default 0
+  cantidadPendiente: number; // NN - Default = cantidad
+  estatus: 'PENDIENTE' | 'EN_PROCESO' | 'COMPLETADO'; // Added for line item tracking
   precioUnitario?: number;
   subtotal?: number;
   notas?: string;

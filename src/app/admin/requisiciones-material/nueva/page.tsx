@@ -16,7 +16,7 @@ interface RequisicionMaterialItem {
 
 export default function NuevaRequisicionMaterialPage() {
   const router = useRouter();
-  
+
   const [formData, setFormData] = useState({
     fechaSolicitud: new Date(),
     estatusAutorizado: false,
@@ -28,7 +28,7 @@ export default function NuevaRequisicionMaterialPage() {
     facturaSerieFolio: '',
     folioOrdenCompraExterno: ''
   });
-  
+
   const [materiales, setMateriales] = useState<Material[]>([]);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [obras, setObras] = useState<Obra[]>([]);
@@ -44,7 +44,7 @@ export default function NuevaRequisicionMaterialPage() {
     try {
       setLoading(true);
       console.log('Cargando datos del formulario...');
-      
+
       const [materialesData, unidadesData, obrasData, proveedoresData, transportistasData] = await Promise.all([
         getCollection<Material>('materials'),
         getCollection('unidades'),
@@ -52,13 +52,13 @@ export default function NuevaRequisicionMaterialPage() {
         getCollection<Proveedor>('suppliers'),
         getCollection<Transportista>('transportistas')
       ]);
-      
+
       console.log('Materiales cargados:', materialesData);
       console.log('Unidades cargadas:', unidadesData);
       console.log('Obras cargadas:', obrasData);
       console.log('Proveedores cargados:', proveedoresData);
       console.log('Transportistas cargados:', transportistasData);
-      
+
       setMateriales(materialesData);
       setUnidades(unidadesData);
       setObras(obrasData);
@@ -88,7 +88,7 @@ export default function NuevaRequisicionMaterialPage() {
       const materialSeleccionado = materiales.find(m => m.id === value);
       // Buscar la unidad correspondiente
       const unidadSeleccionada = unidades.find((u: any) => u.id === materialSeleccionado?.idUnidad);
-      
+
       nuevosMateriales[index] = {
         ...nuevosMateriales[index],
         idMaterial: value,
@@ -115,7 +115,7 @@ export default function NuevaRequisicionMaterialPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validaciones
     if (!formData.idObra || !formData.idProveedor || !formData.idTransportista) {
       alert('Por favor, complete todos los campos requeridos.');
@@ -124,15 +124,15 @@ export default function NuevaRequisicionMaterialPage() {
 
     // Validar que todos los materiales tengan ID y cantidad válida
     const materialesValidos = materialesRequisicion.filter(m => m.idMaterial && m.cantidad > 0);
-    
+
     // Verificar si hay materiales sin cantidad
     const materialesSinCantidad = materialesRequisicion.filter(m => m.idMaterial && (!m.cantidad || m.cantidad <= 0));
-    
+
     if (materialesSinCantidad.length > 0) {
       alert('Por favor, ingrese una cantidad válida para todos los materiales seleccionados.');
       return;
     }
-    
+
     if (materialesValidos.length === 0) {
       alert('Por favor, agregue al menos un material con cantidad válida.');
       return;
@@ -140,11 +140,14 @@ export default function NuevaRequisicionMaterialPage() {
 
     try {
       setSaving(true);
-      
+
       // Obtener nombres desnormalizados
       const obraSeleccionada = obras.find(o => o.id === formData.idObra);
       const proveedorSeleccionado = proveedores.find(p => p.id === formData.idProveedor);
       const transportistaSeleccionado = transportistas.find(t => t.id === formData.idTransportista);
+
+      // Calcular cantidad total
+      const cantidadTotal = materialesValidos.reduce((sum, item) => sum + item.cantidad, 0);
 
       const nuevaRequisicion = {
         fechaSolicitud: Timestamp.fromDate(formData.fechaSolicitud),
@@ -158,22 +161,29 @@ export default function NuevaRequisicionMaterialPage() {
         folioOrdenCompraExterno: formData.folioOrdenCompraExterno || '',
         obraNombre: obraSeleccionada?.nombreParaMostrar || '',
         proveedorNombre: proveedorSeleccionado?.nombreParaMostrar || '',
-        transportistaNombre: transportistaSeleccionado?.nombre || ''
+        transportistaNombre: transportistaSeleccionado?.nombre || '',
+
+        // Datos de progreso
+        cantidadTotal: cantidadTotal,
+        cantidadEntregada: 0
       };
 
       const requisicionId = await addDocument('requisiciones-material', nuevaRequisicion);
-      
+
       console.log('ID de requisición creada:', requisicionId);
-      
+
       // Agregar los materiales a la requisición
       for (const material of materialesValidos) {
         const materialInfo = materiales.find(m => m.id === material.idMaterial);
-        await addDocument('requisiciones-materiales-items', {
-          idRequisicion: requisicionId,
+        await addDocument('lineas-requisicion-material', {
+          idRequisicionMaterial: requisicionId,
           idMaterial: material.idMaterial,
           cantidad: material.cantidad,
-          nombreMaterial: materialInfo?.nombreParaMostrar || '',
-          unidadMaterial: materialInfo?.unidadNombre || ''
+          cantidadEntregada: 0,
+          cantidadPendiente: material.cantidad,
+          estatus: 'PENDIENTE',
+          materialNombre: materialInfo?.nombreParaMostrar || '',
+          requisicionMaterialFolio: ''
         });
       }
 
@@ -224,7 +234,7 @@ export default function NuevaRequisicionMaterialPage() {
               {/* Información General */}
               <div className="lg:col-span-3 space-y-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Información General</h2>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -238,7 +248,7 @@ export default function NuevaRequisicionMaterialPage() {
                       required
                     />
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Obra *
@@ -257,7 +267,7 @@ export default function NuevaRequisicionMaterialPage() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Proveedor *
@@ -276,7 +286,7 @@ export default function NuevaRequisicionMaterialPage() {
                       ))}
                     </select>
                   </div>
-                  
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Transportista *
@@ -317,7 +327,7 @@ export default function NuevaRequisicionMaterialPage() {
             {/* Información Adicional */}
             <div className="lg:col-span-3 space-y-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-200">Información Adicional</h2>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -331,7 +341,7 @@ export default function NuevaRequisicionMaterialPage() {
                     placeholder="Descripción breve"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Folio Orden de Compra Externo
@@ -344,7 +354,7 @@ export default function NuevaRequisicionMaterialPage() {
                     placeholder="Folio OC externo"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Factura Serie Folio
@@ -394,7 +404,7 @@ export default function NuevaRequisicionMaterialPage() {
                 + Agregar Material
               </Button>
             </div>
-            
+
             <div className="space-y-4">
               {materialesRequisicion.map((material, index) => (
                 <div key={index} className="border border-gray-200 rounded-lg p-4 bg-gray-50">
@@ -421,7 +431,7 @@ export default function NuevaRequisicionMaterialPage() {
                         )}
                       </select>
                     </div>
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
                         Cantidad *
@@ -442,7 +452,7 @@ export default function NuevaRequisicionMaterialPage() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="md:col-span-2">
                       <div className="text-sm text-gray-600">
                         {material.nombreMaterial && (
@@ -453,7 +463,7 @@ export default function NuevaRequisicionMaterialPage() {
                         )}
                       </div>
                     </div>
-                    
+
                     <div>
                       {materialesRequisicion.length > 1 && (
                         <Button

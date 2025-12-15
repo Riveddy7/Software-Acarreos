@@ -9,7 +9,8 @@ import {
   Material,
   RequisicionMaterial,
   TruckScanInfo,
-  TicketAcarreoData
+  TicketAcarreoData,
+  LineaRequisicionMaterial
 } from '@/models/types';
 import { ValidationResult, RequisitionMatchResult } from '@/lib/operator/validation';
 import TruckScanner from './TruckScanner';
@@ -19,6 +20,7 @@ import { photoCapture } from '@/lib/operator/photo';
 import { printerManager } from '@/lib/operator/printer';
 import { locationTracker } from '@/lib/operator/location';
 import { getCollection } from '@/lib/firebase/firestore';
+import { collection, query, where, getDocs, getFirestore } from 'firebase/firestore';
 import { Button } from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -71,6 +73,8 @@ export default function AcarreoCaptureForm({
   // New state for refactored workflow
   const [requisiciones, setRequisiciones] = useState<RequisicionMaterial[]>([]);
   const [selectedRequisicion, setSelectedRequisicion] = useState<RequisicionMaterial | null>(null);
+  const [lineasRequisicion, setLineasRequisicion] = useState<LineaRequisicionMaterial[]>([]);
+
   // Fix date initialization to use local time
   const [customDate, setCustomDate] = useState<string>(() => {
     const now = new Date();
@@ -186,16 +190,53 @@ export default function AcarreoCaptureForm({
     }
   };
 
-  const handleRequisicionChange = (reqId: string) => {
+  const handleRequisicionChange = async (reqId: string) => {
     const req = requisiciones.find(r => r.id === reqId) || null;
     setSelectedRequisicion(req);
+
     if (req) {
       setFormData(prev => ({
         ...prev,
         idRequisicionAfectada: req.id
       }));
+
+      // Fetch lines for this requisition
+      try {
+        const db = getFirestore();
+        const q = query(collection(db, 'lineas-requisicion-material'), where('idRequisicionMaterial', '==', req.id));
+        const snapshot = await getDocs(q);
+        const lines = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LineaRequisicionMaterial));
+        setLineasRequisicion(lines);
+        console.log('Lines fetched for requisition:', lines.length);
+      } catch (error) {
+        console.error('Error fetching requisition lines:', error);
+        setLineasRequisicion([]);
+      }
+    } else {
+      setLineasRequisicion([]);
+      setFormData(prev => ({ ...prev, idRequisicionAfectada: undefined }));
     }
   };
+
+  // Effect to update requisitionMatch when material or lines change
+  useEffect(() => {
+    if (selectedRequisicion && selectedMaterial && lineasRequisicion.length > 0) {
+      const match = lineasRequisicion.find(l => l.idMaterial === selectedMaterial.id);
+      if (match) {
+        console.log('Material matched in requisition:', match);
+        setRequisitionMatch({
+          requisicion: selectedRequisicion,
+          linea: match,
+          motivo: 'Material encontrado en requisición'
+        });
+      } else {
+        console.log('Material NOT found in requisition');
+        setRequisitionMatch(null);
+      }
+    } else {
+      setRequisitionMatch(null);
+    }
+  }, [selectedRequisicion, selectedMaterial, lineasRequisicion]);
 
   const handleTruckScan = async (truckInfo: TruckScanInfo) => {
     console.log('handleTruckScan called with:', truckInfo);
@@ -439,7 +480,7 @@ export default function AcarreoCaptureForm({
 
   const saveAcarreo = async (acarreo: Acarreo): Promise<Acarreo> => {
     try {
-      const { getFirestore, collection, addDoc, serverTimestamp } = await import('firebase/firestore');
+      const { getFirestore, collection, addDoc, serverTimestamp, doc, runTransaction } = await import('firebase/firestore');
       const db = getFirestore();
 
       // Prepare data for saving
@@ -448,8 +489,8 @@ export default function AcarreoCaptureForm({
         createdAt: serverTimestamp(),
         estatusConciliado: false,
         // Link to requisition if matched
-        idRequisicion: requisitionMatch?.requisicion?.id || null,
-        idLineaRequisicion: requisitionMatch?.linea?.id || null,
+        idRequisicionAfectada: requisitionMatch?.requisicion?.id || null, // Updated key name to match Acarreo type
+        idLineaRequisicionAfectada: requisitionMatch?.linea?.id || null,  // Updated key name
         folioRequisicion: (requisitionMatch?.requisicion as any)?.folio || (requisitionMatch?.requisicion as any)?.folioPublico || null
       };
 
@@ -465,6 +506,76 @@ export default function AcarreoCaptureForm({
       const docRef = await addDoc(collection(db, 'acarreos'), dataToSave);
 
       console.log('Acarreo saved with ID:', docRef.id);
+
+      // --- LOGIC FOR REQUISITION PROGRESS UPDATE ---
+      // DEBUG: Trace execution
+      console.log('Checking progress update conditions:', { esTiro: acarreo.esTiro, lineId: dataToSave.idLineaRequisicionAfectada });
+
+      // If it's a "Tiro" (Delivery) and linked to a requisition line, update the line.
+      if (acarreo.esTiro && dataToSave.idLineaRequisicionAfectada) {
+        try {
+          const lineId = dataToSave.idLineaRequisicionAfectada;
+          const lineRef = doc(db, 'lineas-requisicion-material', lineId);
+
+          await runTransaction(db, async (transaction) => {
+            // alert(`Iniciando actualización de línea: ${lineId}`);
+
+            // 1. READS (Must come before ANY writes)
+            const lineDoc = await transaction.get(lineRef);
+
+            let reqRef = null;
+            let reqDoc = null;
+            if (dataToSave.idRequisicionAfectada) {
+              reqRef = doc(db, 'requisiciones-material', dataToSave.idRequisicionAfectada);
+              reqDoc = await transaction.get(reqRef);
+            }
+
+            // 2. LOGIC / CALCULATIONS
+            if (!lineDoc.exists()) {
+              console.warn("Requisition line matched but not found in DB:", lineId);
+              // alert("Error: La línea de requisición no existe en BD");
+              return;
+            }
+
+            const lineData = lineDoc.data();
+            const currentEntregada = lineData.cantidadEntregada || 0;
+            const requested = lineData.cantidad || 0;
+
+            const newEntregada = currentEntregada + acarreo.cantidadCapturada;
+            const newPendiente = Math.max(0, requested - newEntregada);
+
+            let newStatus = lineData.estatus;
+            if (newPendiente === 0) {
+              newStatus = 'COMPLETADO';
+            } else if (newEntregada > 0) {
+              newStatus = 'EN_PROCESO';
+            }
+
+            // 3. WRITES
+            transaction.update(lineRef, {
+              cantidadEntregada: newEntregada,
+              cantidadPendiente: newPendiente,
+              estatus: newStatus
+            });
+
+            // Update parent Requisition total progress
+            if (reqRef && reqDoc && reqDoc.exists()) {
+              const reqData = reqDoc.data();
+              const currentReqEntregada = reqData.cantidadEntregada || 0;
+              transaction.update(reqRef, {
+                cantidadEntregada: currentReqEntregada + acarreo.cantidadCapturada
+              });
+            }
+
+            console.log(`Updated Requisition Line ${lineId}: Delivered ${newEntregada}/${requested}, Status: ${newStatus}`);
+          });
+
+        } catch (reqError) {
+          console.error("Error updating requisition progress (non-blocking):", reqError);
+          // We do NOT throw here so the Acarreo save is considered successful even if this update fails
+        }
+      }
+      // ---------------------------------------------
 
       return {
         ...acarreo,

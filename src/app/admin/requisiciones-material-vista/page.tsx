@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { getCollection, addDocument, updateDocument, deleteDocument } from '@/lib/firebase/firestore';
-import { RequisicionMaterial, Acarreo } from '@/models/types';
+import { RequisicionMaterial, Acarreo, LineaRequisicionMaterial } from '@/models/types';
 import { REQUISICIONES_MATERIAL_COLLECTION, ACARREOS_COLLECTION } from '@/lib/firebase/firestore';
 import Modal from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +10,10 @@ import { SearchInput } from '@/components/ui/SearchInput';
 import { DataTable } from '@/components/ui/DataTable';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Column } from '@/components/ui/DataTable';
-import { Timestamp } from 'firebase/firestore';
+import { Timestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+
+const LINEAS_REQUISICION_MATERIAL_COLLECTION = 'lineas-requisicion-material';
 
 // Definir los posibles estados de una requisición
 type RequisicionStatus = 'revision' | 'autorizada' | 'cancelada' | 'parcialmente_surtida' | 'cerrada_parcialmente_surtida' | 'cerrada_totalmente_surtida';
@@ -31,31 +34,32 @@ const statusDisplayMap: Record<number, { text: string; color: string }> = {
   1: { text: 'Autorizada', color: 'bg-green-100 text-green-800' },
   2: { text: 'Cancelada', color: 'bg-red-100 text-red-800' },
   3: { text: 'Parcialmente Surtida', color: 'bg-blue-100 text-blue-800' },
-  4: { text: 'Cerrada Parcialmente', color: 'bg-indigo-100 text-indigo-800' },
-  5: { text: 'Cerrada Totalmente', color: 'bg-purple-100 text-purple-800' }
+  4: { text: 'Cerrada (Incompleta)', color: 'bg-indigo-100 text-indigo-800' },
+  5: { text: 'Completada', color: 'bg-purple-100 text-purple-800' }
 };
 
 interface RequisicionDetailModalProps {
   requisicion: RequisicionMaterial | null;
   acarreosLigados: Acarreo[];
+  lineasRequisicion: LineaRequisicionMaterial[];
   onClose: () => void;
   onLinkAcarreo: (requisicionId: string, acarreoId: string) => void;
   onUnlinkAcarreo: (requisicionId: string, acarreoId: string) => void;
 }
 
-function RequisicionDetailModal({ requisicion, acarreosLigados, onClose, onLinkAcarreo, onUnlinkAcarreo }: RequisicionDetailModalProps) {
+function RequisicionDetailModal({ requisicion, acarreosLigados, lineasRequisicion, onClose, onLinkAcarreo, onUnlinkAcarreo }: RequisicionDetailModalProps) {
   const [linkingAcarreo, setLinkingAcarreo] = useState<string | null>(null);
   const [unlinkingAcarreo, setUnlinkingAcarreo] = useState<string | null>(null);
 
   const handleLinkAcarreo = async (acarreoId: string) => {
     if (!requisicion) return;
-    
+
     setLinkingAcarreo(acarreoId);
     try {
       await updateDocument(ACARREOS_COLLECTION, acarreoId, {
         idRequisicionAfectada: requisicion.id
       });
-      
+
       // Actualizar la lista de acarreos ligados
       await onLinkAcarreo(requisicion.id, acarreoId);
     } catch (error) {
@@ -68,13 +72,13 @@ function RequisicionDetailModal({ requisicion, acarreosLigados, onClose, onLinkA
 
   const handleUnlinkAcarreo = async (acarreoId: string) => {
     if (!requisicion) return;
-    
+
     setUnlinkingAcarreo(acarreoId);
     try {
       await updateDocument(ACARREOS_COLLECTION, acarreoId, {
         idRequisicionAfectada: null
       });
-      
+
       // Actualizar la lista de acarreos ligados
       await onUnlinkAcarreo(requisicion.id, acarreoId);
     } catch (error) {
@@ -133,6 +137,57 @@ function RequisicionDetailModal({ requisicion, acarreosLigados, onClose, onLinkA
               <p className="text-sm text-gray-900">{requisicion.descripcionNotas || 'N/A'}</p>
             </div>
           </div>
+        </div>
+
+
+
+        {/* Líneas de Requisición (Materiales) */}
+        <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+          <h3 className="text-lg font-semibold mb-4 text-gray-800">Materiales Requeridos (Progreso)</h3>
+          {lineasRequisicion.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No hay materiales registrados en esta requisición</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Solicitado</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Entregado</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Pendiente</th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Estatus</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {lineasRequisicion.map((linea) => {
+                    const percent = linea.cantidad > 0 ? Math.min(100, (linea.cantidadEntregada / linea.cantidad) * 100) : 0;
+                    return (
+                      <tr key={linea.id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {linea.materialNombre}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">
+                          {linea.cantidad} m³
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-blue-600 font-bold">
+                          {linea.cantidadEntregada} m³
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-500">
+                          {linea.cantidadPendiente} m³
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1">
+                            <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${percent}%` }}></div>
+                          </div>
+                          <span className="text-xs text-gray-500">{percent.toFixed(1)}%</span>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Acarreos ligados */}
@@ -217,7 +272,7 @@ function RequisicionDetailModal({ requisicion, acarreosLigados, onClose, onLinkA
           </Button>
         </div>
       </div>
-    </Modal>
+    </Modal >
   );
 }
 
@@ -226,15 +281,16 @@ export default function RequisicionesMaterialVistaPage() {
   const [acarreos, setAcarreos] = useState<Acarreo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRequisiciones, setSelectedRequisiciones] = useState<string[]>([]);
   const [selectAll, setSelectAll] = useState(false);
-  
+
   const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [selectedRequisicion, setSelectedRequisicion] = useState<RequisicionMaterial | null>(null);
   const [acarreosLigados, setAcarreosLigados] = useState<Acarreo[]>([]);
-  
+  const [lineasRequisicion, setLineasRequisicion] = useState<LineaRequisicionMaterial[]>([]);
+
   // Estados para el formulario de nueva requisición
   const [formModalOpen, setFormModalOpen] = useState(false);
   const [formData, setFormData] = useState({
@@ -248,11 +304,17 @@ export default function RequisicionesMaterialVistaPage() {
     facturaSerieFolio: '',
     folioOrdenCompraExterno: ''
   });
-  
+
   // Datos para los dropdowns
   const [obras, setObras] = useState<any[]>([]);
   const [proveedores, setProveedores] = useState<any[]>([]);
+
   const [transportistas, setTransportistas] = useState<any[]>([]);
+  const [materials, setMaterials] = useState<any[]>([]);
+
+  // Estado para líneas de requisición (formulario)
+  const [formLineas, setFormLineas] = useState<{ idMaterial: string; cantidad: number; materialNombre: string }[]>([]);
+  const [newLinea, setNewLinea] = useState({ idMaterial: '', cantidad: 0 });
 
   const fetchRequisiciones = useCallback(async () => {
     try {
@@ -304,13 +366,23 @@ export default function RequisicionesMaterialVistaPage() {
     }
   }, []);
 
+  const fetchMaterials = useCallback(async () => {
+    try {
+      const materialsData = await getCollection('materials');
+      setMaterials(materialsData);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRequisiciones();
     fetchAcarreos();
     fetchObras();
     fetchProveedores();
     fetchTransportistas();
-  }, [fetchRequisiciones, fetchAcarreos, fetchObras, fetchProveedores, fetchTransportistas]);
+    fetchMaterials();
+  }, [fetchRequisiciones, fetchAcarreos, fetchObras, fetchProveedores, fetchTransportistas, fetchMaterials]);
 
   const handleSelectRequisicion = (requisicionId: string) => {
     if (selectedRequisiciones.includes(requisicionId)) {
@@ -332,13 +404,26 @@ export default function RequisicionesMaterialVistaPage() {
   const openDetailModal = async (requisicionId: string) => {
     const requisicion = requisiciones.find(r => r.id === requisicionId);
     if (!requisicion) return;
-    
+
     setSelectedRequisicion(requisicion);
-    
+
+    // Cargar acarreos ligados a esta requisición
     // Cargar acarreos ligados a esta requisición
     try {
       const acarreosLigadosData = acarreos.filter(acarreo => acarreo.idRequisicionAfectada === requisicionId);
       setAcarreosLigados(acarreosLigadosData);
+
+      // Cargar líneas de requisición
+      try {
+        const q = query(collection(db, LINEAS_REQUISICION_MATERIAL_COLLECTION), where('idRequisicionMaterial', '==', requisicionId));
+        const snapshot = await getDocs(q);
+        const lines = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as LineaRequisicionMaterial));
+        setLineasRequisicion(lines);
+      } catch (err) {
+        console.error("Error loading lines", err);
+        setLineasRequisicion([]);
+      }
+
       setDetailModalOpen(true);
     } catch (error) {
       console.error('Error al cargar acarreos ligados:', error);
@@ -349,6 +434,7 @@ export default function RequisicionesMaterialVistaPage() {
     setDetailModalOpen(false);
     setSelectedRequisicion(null);
     setAcarreosLigados([]);
+    setLineasRequisicion([]);
   };
 
   const handleLinkAcarreo = async (requisicionId: string, acarreoId: string) => {
@@ -356,7 +442,7 @@ export default function RequisicionesMaterialVistaPage() {
       await updateDocument(ACARREOS_COLLECTION, acarreoId, {
         idRequisicionAfectada: requisicionId
       });
-      
+
       // Actualizar la lista de acarreos ligados
       const updatedAcarreosLigados = [...acarreosLigados, acarreos.find(a => a.id === acarreoId)!];
       setAcarreosLigados(updatedAcarreosLigados);
@@ -371,7 +457,7 @@ export default function RequisicionesMaterialVistaPage() {
       await updateDocument(ACARREOS_COLLECTION, acarreoId, {
         idRequisicionAfectada: null
       });
-      
+
       // Actualizar la lista de acarreos ligados
       setAcarreosLigados(acarreosLigados.filter(a => a.id !== acarreoId));
     } catch (error) {
@@ -383,13 +469,14 @@ export default function RequisicionesMaterialVistaPage() {
   const changeStatus = async (requisicionId: string, newStatus: RequisicionStatus) => {
     try {
       await updateDocument(REQUISICIONES_MATERIAL_COLLECTION, requisicionId, {
-        estatusAutorizado: statusMap[newStatus]
+        estatus: statusMap[newStatus],
+        estatusAutorizado: newStatus === 'autorizada' ? true : false // Keep syncing for legacy
       });
-      
+
       // Actualizar la lista local
       setRequisiciones(requisiciones.map(r =>
         r.id === requisicionId
-          ? { ...r, estatusAutorizado: statusMap[newStatus] as any }
+          ? { ...r, estatus: statusMap[newStatus], estatusAutorizado: (newStatus === 'autorizada') }
           : r
       ));
     } catch (error) {
@@ -426,8 +513,8 @@ export default function RequisicionesMaterialVistaPage() {
         transportistaNombre: transportistaSeleccionado?.nombre || ''
       };
 
-      await addDocument(REQUISICIONES_MATERIAL_COLLECTION, nuevaRequisicion);
-      
+      const docRefId = await addDocument(REQUISICIONES_MATERIAL_COLLECTION, nuevaRequisicion);
+
       // Resetear formulario
       setFormData({
         fechaSolicitud: new Date(),
@@ -440,12 +527,13 @@ export default function RequisicionesMaterialVistaPage() {
         facturaSerieFolio: '',
         folioOrdenCompraExterno: ''
       });
-      
+      setFormLineas([]); // Reset lines
+
       setFormModalOpen(false);
-      
+
       // Recargar la lista de requisiciones
       fetchRequisiciones();
-      
+
       alert('Requisición creada correctamente.');
     } catch (error) {
       console.error('Error al crear requisición:', error);
@@ -466,16 +554,15 @@ export default function RequisicionesMaterialVistaPage() {
   const columns: Column<RequisicionMaterial>[] = [
     {
       key: 'id',
-      label: "ID",
-      render: (value, requisicion) => (
+      label: "",
+      render: (_, requisicion) => (
         <div className="flex items-center">
           <input
             type="checkbox"
             checked={selectedRequisiciones.includes(requisicion.id)}
             onChange={() => handleSelectRequisicion(requisicion.id)}
-            className="mr-2"
+            className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
           />
-          <span className="font-mono text-sm">{value}</span>
         </div>
       )
     },
@@ -513,17 +600,26 @@ export default function RequisicionesMaterialVistaPage() {
       key: 'descripcionCorta',
       label: 'Descripción Corta',
       render: (value) => (
-        <span className="font-medium text-gray-900">{value || 'Sin descripción'}</span>
+        <span className="text-gray-500">{value || '-'}</span>
       )
     },
     {
-      key: 'estatusAutorizado',
+      key: 'estatus',
       label: 'Estatus',
-      render: (value) => {
-        const statusInfo = statusDisplayMap[value] || { text: 'Desconocido', color: 'bg-gray-100 text-gray-800' };
+      render: (value, item) => {
+        let statusVal = 0; // Default: 'En Revisión'
+
+        if (typeof item.estatus === 'number') {
+          statusVal = item.estatus;
+        } else if (item.estatusAutorizado) {
+          statusVal = 1; // 'Autorizada'
+        }
+
+        const config = statusDisplayMap[statusVal] || statusDisplayMap[0];
+
         return (
-          <span className={`px-2 py-1 text-xs rounded-full ${statusInfo.color}`}>
-            {statusInfo.text}
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+            {config.text}
           </span>
         );
       }
@@ -541,6 +637,30 @@ export default function RequisicionesMaterialVistaPage() {
       render: (value) => (
         <span className="font-medium text-gray-900">{value || 'N/A'}</span>
       )
+    },
+    {
+      key: 'cantidadTotal',
+      label: "Progreso",
+      render: (_, requisicion) => {
+        const total = requisicion.cantidadTotal || 0;
+        const delivered = requisicion.cantidadEntregada || 0;
+        const percent = total > 0 ? Math.min(100, (delivered / total) * 100) : 0;
+
+        return (
+          <div className="w-full min-w-[150px] px-2">
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-medium text-gray-700">{percent.toFixed(0)}%</span>
+              <span className="text-gray-500">{delivered}/{total} m³</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${percent}%` }}
+              ></div>
+            </div>
+          </div>
+        );
+      }
     },
     {
       key: 'id' as keyof RequisicionMaterial,
@@ -571,7 +691,7 @@ export default function RequisicionesMaterialVistaPage() {
         <Button onClick={() => window.location.href = '/admin/requisiciones-material/nueva'}>
           Crear Nueva
         </Button>
-        
+
         <Button
           variant="danger"
           onClick={() => {
@@ -579,7 +699,7 @@ export default function RequisicionesMaterialVistaPage() {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             if (confirm('¿Está seguro de que desea eliminar las requisiciones seleccionadas?')) {
               // Aquí iría la lógica de eliminación
               alert('Funcionalidad de eliminación no implementada aún.');
@@ -589,15 +709,15 @@ export default function RequisicionesMaterialVistaPage() {
         >
           Eliminar Seleccionadas
         </Button>
-        
-        <Button 
+
+        <Button
           variant="outline"
           onClick={() => {
             if (selectedRequisiciones.length === 0) {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             // Cambiar estatus a "Autorizada"
             Promise.all(selectedRequisiciones.map(id => changeStatus(id, 'autorizada')))
               .then(() => {
@@ -614,7 +734,7 @@ export default function RequisicionesMaterialVistaPage() {
         >
           Autorizar Seleccionadas
         </Button>
-        
+
         <Button
           variant="ghost"
           onClick={() => {
@@ -622,7 +742,7 @@ export default function RequisicionesMaterialVistaPage() {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             // Cambiar estatus a "Cancelada"
             Promise.all(selectedRequisiciones.map(id => changeStatus(id, 'cancelada')))
               .then(() => {
@@ -639,7 +759,7 @@ export default function RequisicionesMaterialVistaPage() {
         >
           Cancelar Seleccionadas
         </Button>
-        
+
         <Button
           variant="ghost"
           onClick={() => {
@@ -647,7 +767,7 @@ export default function RequisicionesMaterialVistaPage() {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             // Cambiar estatus a "Parcialmente Surtida"
             Promise.all(selectedRequisiciones.map(id => changeStatus(id, 'parcialmente_surtida')))
               .then(() => {
@@ -664,7 +784,7 @@ export default function RequisicionesMaterialVistaPage() {
         >
           Parcialmente Surtida
         </Button>
-        
+
         <Button
           variant="ghost"
           onClick={() => {
@@ -672,7 +792,7 @@ export default function RequisicionesMaterialVistaPage() {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             // Cambiar estatus a "Cerrada Parcialmente"
             Promise.all(selectedRequisiciones.map(id => changeStatus(id, 'cerrada_parcialmente_surtida')))
               .then(() => {
@@ -689,15 +809,15 @@ export default function RequisicionesMaterialVistaPage() {
         >
           Cerrada Parcialmente
         </Button>
-        
-        <Button 
+
+        <Button
           variant="outline"
           onClick={() => {
             if (selectedRequisiciones.length === 0) {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             // Cambiar estatus a "Cerrada Totalmente"
             Promise.all(selectedRequisiciones.map(id => changeStatus(id, 'cerrada_totalmente_surtida')))
               .then(() => {
@@ -714,7 +834,7 @@ export default function RequisicionesMaterialVistaPage() {
         >
           Cerrada Totalmente
         </Button>
-        
+
         <Button
           variant="secondary"
           onClick={() => {
@@ -722,7 +842,7 @@ export default function RequisicionesMaterialVistaPage() {
               alert('Por favor, seleccione al menos una requisición.');
               return;
             }
-            
+
             // Importar desde plantilla
             alert('Funcionalidad de importación desde plantilla no implementada aún.');
           }}
@@ -758,6 +878,7 @@ export default function RequisicionesMaterialVistaPage() {
         <RequisicionDetailModal
           requisicion={selectedRequisicion}
           acarreosLigados={acarreosLigados}
+          lineasRequisicion={lineasRequisicion}
           onClose={closeDetailModal}
           onLinkAcarreo={handleLinkAcarreo}
           onUnlinkAcarreo={handleUnlinkAcarreo}
@@ -789,7 +910,7 @@ export default function RequisicionesMaterialVistaPage() {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Estatus
@@ -947,6 +1068,8 @@ export default function RequisicionesMaterialVistaPage() {
                 placeholder="Descripción detallada y notas adicionales"
               />
             </div>
+
+
 
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
               <Button
