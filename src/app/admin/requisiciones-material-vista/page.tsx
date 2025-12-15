@@ -31,11 +31,11 @@ const statusMap: Record<RequisicionStatus, number> = {
 // Mapeo inverso para mostrar en la tabla
 const statusDisplayMap: Record<number, { text: string; color: string }> = {
   0: { text: 'En Revisión', color: 'bg-yellow-100 text-yellow-800' },
-  1: { text: 'Autorizada', color: 'bg-green-100 text-green-800' },
+  1: { text: 'Autorizada', color: 'bg-gray-100 text-gray-800' },
   2: { text: 'Cancelada', color: 'bg-red-100 text-red-800' },
-  3: { text: 'Parcialmente Surtida', color: 'bg-blue-100 text-blue-800' },
+  3: { text: 'En Progreso', color: 'bg-yellow-100 text-yellow-800' },
   4: { text: 'Cerrada (Incompleta)', color: 'bg-indigo-100 text-indigo-800' },
-  5: { text: 'Completada', color: 'bg-purple-100 text-purple-800' }
+  5: { text: 'Completada', color: 'bg-green-100 text-green-800' }
 };
 
 interface RequisicionDetailModalProps {

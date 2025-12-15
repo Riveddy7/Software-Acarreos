@@ -562,9 +562,23 @@ export default function AcarreoCaptureForm({
             if (reqRef && reqDoc && reqDoc.exists()) {
               const reqData = reqDoc.data();
               const currentReqEntregada = reqData.cantidadEntregada || 0;
-              transaction.update(reqRef, {
-                cantidadEntregada: currentReqEntregada + acarreo.cantidadCapturada
-              });
+              const reqTotal = reqData.cantidadTotal || 0;
+
+              const newReqEntregada = currentReqEntregada + acarreo.cantidadCapturada;
+
+              const updateData: any = {
+                cantidadEntregada: newReqEntregada
+              };
+
+              // Update Status based on progress
+              // 5 = COMPLETADA, 3 = EN PROCESO (Parcial)
+              if (reqTotal > 0 && newReqEntregada >= reqTotal) {
+                updateData.estatus = 5;
+              } else if (newReqEntregada > 0 && (!reqData.estatus || reqData.estatus < 3)) {
+                updateData.estatus = 3;
+              }
+
+              transaction.update(reqRef, updateData);
             }
 
             console.log(`Updated Requisition Line ${lineId}: Delivered ${newEntregada}/${requested}, Status: ${newStatus}`);
